@@ -18,6 +18,7 @@ export const Apps = ({ user }) => {
   const [shopSheetsApiUrl, setShopSheetsApiUrl] = useState(localStorage.getItem('restaurant_sheets_url') || 'https://script.google.com/macros/s/AKfycbwYANIDoL8rHDGNbjLyBR14xvWQQKoQ-ekJksmjMsGwc1cgHW7hcd3L_lGmIRm1bbs/exec');
   const [isConfigExpanded, setIsConfigExpanded] = useState(false);
   const [isShopsLoading, setIsShopsLoading] = useState(false);
+  const [restaurants, setRestaurants] = useState([]);
 
   const fetchRestaurants = async () => {
     if (!shopSheetsApiUrl) {
