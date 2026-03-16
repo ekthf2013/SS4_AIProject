@@ -24,6 +24,15 @@ export const Apps = ({ user }) => {
   const [newShopRating, setNewShopRating] = useState('5.0');
   const [selectedShop, setSelectedShop] = useState(null);
 
+  const getDisplayRating = (shop) => {
+    if (!shop) return '0.0';
+    const baseRating = parseFloat(shop.rating) || 0;
+    const reviews = Array.isArray(shop.reviews) ? shop.reviews : [];
+    if (reviews.length === 0) return baseRating.toFixed(1);
+    const sum = baseRating + reviews.reduce((acc, rev) => acc + (parseFloat(rev.rating) || 0), 0);
+    return (sum / (reviews.length + 1)).toFixed(1);
+  };
+
   const fetchRestaurants = async () => {
     if (!shopSheetsApiUrl) {
       setRestaurants([
@@ -211,7 +220,7 @@ export const Apps = ({ user }) => {
                         <p className="text-sm font-bold text-gray-900 mt-0.5">{shop?.name || '기타'}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-bold text-yellow-500">★{shop?.rating || '0.0'}</p>
+                        <p className="text-sm font-bold text-yellow-500">★{getDisplayRating(shop)}</p>
                       </div>
                     </div>
                   ))
@@ -437,7 +446,7 @@ export const Apps = ({ user }) => {
                 <div>
                   <h3 className="text-2xl font-black text-gray-900 mb-1">{selectedShop.name}</h3>
                   <p className="text-xs font-bold text-gray-500 tracking-widest uppercase">
-                    <span className="text-blue-600">{selectedShop.cat}</span> &bull; ★{selectedShop.rating}
+                    <span className="text-blue-600">{selectedShop.cat}</span> &bull; ★{getDisplayRating(selectedShop)}
                     {selectedShop.addedBy ? ` \u2022 By ${selectedShop.addedBy}` : ''}
                   </p>
                 </div>
