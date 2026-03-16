@@ -19,10 +19,13 @@ export const Apps = ({ user }) => {
   const [isConfigExpanded, setIsConfigExpanded] = useState(false);
   const [isShopsLoading, setIsShopsLoading] = useState(false);
   const [restaurants, setRestaurants] = useState([]);
+  const [newShopName, setNewShopName] = useState('');
+  const [newShopDesc, setNewShopDesc] = useState('');
+  const [newShopRating, setNewShopRating] = useState('5.0');
+  const [selectedShop, setSelectedShop] = useState(null);
 
   const fetchRestaurants = async () => {
     if (!shopSheetsApiUrl) {
-      // Sample data if no URL
       setRestaurants([
         { id: 1, name: '샘플 중식당', cat: '중식', rating: 4.5, desc: '연동 URL을 입력하면 실제 데이터를 가져옵니다.', addedBy: 'System', reviews: [] }
       ]);
@@ -30,11 +33,16 @@ export const Apps = ({ user }) => {
     }
     setIsShopsLoading(true);
     try {
+      console.log("Fetching restaurants from:", shopSheetsApiUrl);
       const res = await fetch(shopSheetsApiUrl);
+      if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
       const data = await res.json();
-      setRestaurants(data);
+      console.log("Fetched data:", data);
+      setRestaurants(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Fetch Shops Error:", err);
+      // Fallback to empty array on error to prevent crash
+      setRestaurants([]);
     } finally {
       setIsShopsLoading(false);
     }
@@ -192,21 +200,23 @@ export const Apps = ({ user }) => {
               <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2">
                 {isShopsLoading ? (
                   <div className="py-10 flex justify-center"><RotateCw className="animate-spin text-gray-300" /></div>
-                ) : (
+                ) : (Array.isArray(restaurants) && restaurants.length > 0) ? (
                   restaurants.map((shop) => (
-                    <div key={shop.id} onClick={() => setSelectedShop(shop)} className="cursor-pointer bg-gray-50 border border-gray-100 p-4 rounded-2xl flex items-center gap-4 hover:shadow-md transition-shadow">
+                    <div key={shop.id} onClick={() => shop && setSelectedShop(shop)} className="cursor-pointer bg-gray-50 border border-gray-100 p-4 rounded-2xl flex items-center gap-4 hover:shadow-md transition-shadow">
                       <div className="w-12 h-12 rounded-xl bg-orange-50 flex items-center justify-center text-orange-500 border border-orange-100">
                         <Utensils size={24} />
                       </div>
                       <div className="flex-1">
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{shop.cat}</p>
-                        <p className="text-sm font-bold text-gray-900 mt-0.5">{shop.name}</p>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{shop?.cat || '기타'}</p>
+                        <p className="text-sm font-bold text-gray-900 mt-0.5">{shop?.name || '기타'}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-bold text-yellow-500">★{shop.rating}</p>
+                        <p className="text-sm font-bold text-yellow-500">★{shop?.rating || '0.0'}</p>
                       </div>
                     </div>
                   ))
+                ) : !isShopsLoading && (
+                  <div className="py-10 text-center text-gray-400 text-xs font-bold">등록된 식당이 없습니다.</div>
                 )}
               </div>
               <div className="pt-5 border-t border-gray-100 space-y-3">
@@ -438,13 +448,13 @@ export const Apps = ({ user }) => {
               <div className="space-y-5 pt-6 border-t border-gray-100">
                 <h4 className="text-xs font-bold text-gray-500 uppercase tracking-widest">Reviews</h4>
                 <div className="max-h-40 overflow-y-auto space-y-3 pr-2">
-                  {selectedShop.reviews?.map((rv, i) => (
+                  {Array.isArray(selectedShop?.reviews) && selectedShop.reviews.map((rv, i) => (
                     <div key={i} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-                      <p className="text-[10px] font-bold text-gray-400 mb-1.5 tracking-wider">{rv.user} <span className="text-yellow-500">★{rv.rating}</span></p>
-                      <p className="text-sm text-gray-800 font-medium">{rv.comment}</p>
+                      <p className="text-[10px] font-bold text-gray-400 mb-1.5 tracking-wider">{rv?.user || 'Unknown'} <span className="text-yellow-500">★{rv?.rating || '0.0'}</span></p>
+                      <p className="text-sm text-gray-800 font-medium">{rv?.comment || '내용 없음'}</p>
                     </div>
                   ))}
-                  {(!selectedShop.reviews || selectedShop.reviews.length === 0) && <p className="text-sm text-gray-500 font-medium text-center py-4 bg-gray-50 rounded-xl">리뷰가 없습니다.</p>}
+                  {(!selectedShop?.reviews || selectedShop.reviews.length === 0) && <p className="text-sm text-gray-500 font-medium text-center py-4 bg-gray-50 rounded-xl">리뷰가 없습니다.</p>}
                 </div>
                 <div className="flex gap-2">
                   <select id="revRating" defaultValue="5.0" className="w-20 bg-white border border-gray-300 rounded-xl p-3 text-sm font-bold text-gray-900 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors appearance-none text-center">
