@@ -8,8 +8,12 @@ import { cn } from '../shared/utils';
 export const Apps = ({ user, addNotification, theme }) => {
   const { t } = useTranslation();
   const [appTab, setAppTab] = useState('welfare');
-  const [voteCount, setVoteCount] = useState({ hotpot: 12, bbq: 28, pasta: 8 });
+  const [voteCount, setVoteCount] = useState({});
   const [hasVoted, setHasVoted] = useState(false);
+  const [pollTitle, setPollTitle] = useState('');
+  const [pollOptions, setPollOptions] = useState([]);
+  const [newOption, setNewOption] = useState('');
+  const [isPollActive, setIsPollActive] = useState(false);
   const [departure, setDeparture] = useState('');
   const [destination, setDestination] = useState('회사');
   const [commuteMode, setCommuteMode] = useState('toWork'); // 'toWork' or 'toHome'
@@ -126,11 +130,51 @@ export const Apps = ({ user, addNotification, theme }) => {
     }
   };
 
-  const handleVote = (key, label) => {
-    if (hasVoted) return;
-    setVoteCount(prev => ({ ...prev, [key]: prev[key] + 1 }));
+  const handleVote = (key) => {
+    if (hasVoted || !isPollActive) return;
+    setVoteCount(prev => ({ ...prev, [key]: (prev[key] || 0) + 1 }));
     setHasVoted(true);
-    addNotification(`[투표] "${label || key}" 메뉴에 투표하셨습니다.`);
+    addNotification(`[투표] "${key}" 항목에 투표하셨습니다.`);
+  };
+
+  const handleCreatePoll = () => {
+    if (!pollTitle.trim()) {
+      alert("투표 주제를 입력해 주세요.");
+      return;
+    }
+    if (pollOptions.length < 2) {
+      alert("최소 2개 이상의 항목을 추가해 주세요.");
+      return;
+    }
+    
+    const initialVotes = {};
+    pollOptions.forEach(opt => {
+      initialVotes[opt] = 0;
+    });
+    
+    setVoteCount(initialVotes);
+    setIsPollActive(true);
+    setHasVoted(false);
+    addNotification(`[투표] 새로운 투표 "${pollTitle}"이(가) 시작되었습니다.`);
+  };
+
+  const handleAddOption = () => {
+    if (!newOption.trim()) return;
+    if (pollOptions.includes(newOption.trim())) {
+      alert("이미 존재하는 항목입니다.");
+      return;
+    }
+    setPollOptions(prev => [...prev, newOption.trim()]);
+    setNewOption('');
+  };
+
+  const handleResetPoll = () => {
+    if (!confirm("투표를 초기화하고 새로 만드시겠습니까?")) return;
+    setIsPollActive(false);
+    setPollTitle('');
+    setPollOptions([]);
+    setVoteCount({});
+    setHasVoted(false);
   };
 
   const totalVotes = Object.values(voteCount).reduce((a, b) => a + b, 0);
@@ -206,19 +250,28 @@ export const Apps = ({ user, addNotification, theme }) => {
 
       {appTab === 'welfare' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
-            <Card title={t('gourmet_portal')} className="space-y-6 bg-white border border-gray-200 shadow-sm">
+            <Card title={t('gourmet_portal')} theme={theme} className="space-y-6">
               <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2">
                 {isShopsLoading ? (
                   <div className="py-10 flex justify-center"><RotateCw className="animate-spin text-gray-300" /></div>
                 ) : (Array.isArray(restaurants) && restaurants.length > 0) ? (
                   restaurants.map((shop) => (
-                    <div key={shop.id} onClick={() => shop && setSelectedShop(shop)} className="cursor-pointer bg-gray-50 border border-gray-100 p-4 rounded-2xl flex items-center gap-4 hover:shadow-md transition-shadow">
-                      <div className="w-12 h-12 rounded-xl bg-orange-50 flex items-center justify-center text-orange-500 border border-orange-100">
+                    <div key={shop.id} onClick={() => shop && setSelectedShop(shop)} className={cn(
+                      "cursor-pointer p-4 rounded-2xl flex items-center gap-4 hover:shadow-md transition-all border",
+                      theme === 'dark' ? "bg-slate-800 border-slate-700" : "bg-gray-50 border-gray-100"
+                    )}>
+                      <div className={cn(
+                        "w-12 h-12 rounded-xl flex items-center justify-center border transition-colors",
+                        theme === 'dark' ? "bg-orange-900/20 text-orange-400 border-orange-800/50" : "bg-orange-50 text-orange-500 border-orange-100"
+                      )}>
                         <Utensils size={24} />
                       </div>
                       <div className="flex-1">
                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{shop?.cat || '기타'}</p>
-                        <p className="text-sm font-bold text-gray-900 mt-0.5">{shop?.name || '기타'}</p>
+                        <p className={cn(
+                          "text-sm font-bold mt-0.5",
+                          theme === 'dark' ? "text-slate-100" : "text-gray-900"
+                        )}>{shop?.name || '기타'}</p>
                       </div>
                       <div className="text-right">
                         <p className="text-sm font-bold text-yellow-500">★{getDisplayRating(shop)}</p>
@@ -229,10 +282,28 @@ export const Apps = ({ user, addNotification, theme }) => {
                   <div className="py-10 text-center text-gray-400 text-xs font-bold">등록된 식당이 없습니다.</div>
                 )}
               </div>
-              <div className="pt-5 border-t border-gray-100 space-y-3">
-                <input value={newShopName} onChange={e => setNewShopName(e.target.value)} placeholder="새 식당 이름..." className="w-full bg-white border border-gray-200 rounded-xl p-3 text-sm font-bold text-gray-900 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder-gray-400" />
+              <div className={cn(
+                "pt-5 border-t space-y-3",
+                theme === 'dark' ? "border-slate-800" : "border-gray-100"
+              )}>
+                <input 
+                  value={newShopName} 
+                  onChange={e => setNewShopName(e.target.value)} 
+                  placeholder="새 식당 이름..." 
+                  className={cn(
+                    "w-full rounded-xl p-3 text-sm font-bold outline-none ring-offset-0 focus:ring-1 focus:ring-blue-500 transition-all placeholder-gray-400 border",
+                    theme === 'dark' ? "bg-slate-900 border-slate-700 text-slate-100 focus:border-blue-500" : "bg-white border-gray-200 text-gray-900 focus:border-blue-500"
+                  )} 
+                />
                 <div className="flex gap-2">
-                  <select value={newShopRating} onChange={e => setNewShopRating(e.target.value)} className="w-20 bg-white border border-gray-200 rounded-xl p-3 text-sm font-bold text-gray-900 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all appearance-none text-center">
+                  <select 
+                    value={newShopRating} 
+                    onChange={e => setNewShopRating(e.target.value)} 
+                    className={cn(
+                      "w-20 rounded-xl p-3 text-sm font-bold outline-none ring-offset-0 focus:ring-1 focus:ring-blue-500 transition-all appearance-none text-center border",
+                      theme === 'dark' ? "bg-slate-900 border-slate-700 text-slate-100" : "bg-white border-gray-200 text-gray-900"
+                    )}
+                  >
                     <option value="5.0">5.0</option>
                     <option value="4.5">4.5</option>
                     <option value="4.0">4.0</option>
@@ -243,7 +314,15 @@ export const Apps = ({ user, addNotification, theme }) => {
                     <option value="1.5">1.5</option>
                     <option value="1.0">1.0</option>
                   </select>
-                  <input value={newShopDesc} onChange={e => setNewShopDesc(e.target.value)} placeholder="간단한 설명..." className="flex-1 bg-white border border-gray-200 rounded-xl p-3 text-sm font-bold text-gray-900 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder-gray-400" />
+                  <input 
+                    value={newShopDesc} 
+                    onChange={e => setNewShopDesc(e.target.value)} 
+                    placeholder="간단한 설명..." 
+                    className={cn(
+                      "flex-1 rounded-xl p-3 text-sm font-bold outline-none ring-offset-0 focus:ring-1 focus:ring-blue-500 transition-all placeholder-gray-400 border",
+                      theme === 'dark' ? "bg-slate-900 border-slate-700 text-slate-100 focus:border-blue-500" : "bg-white border-gray-200 text-gray-900 focus:border-blue-500"
+                    )} 
+                  />
                 </div>
                 <button onClick={handleAddRestaurant} disabled={!newShopName || isShopsLoading} className="w-full py-3.5 bg-blue-600 disabled:bg-gray-200 disabled:text-gray-400 hover:bg-blue-700 rounded-xl font-bold tracking-widest text-white transition-colors shadow-sm">+ 추가하기</button>
               </div>
@@ -436,48 +515,150 @@ export const Apps = ({ user, addNotification, theme }) => {
       )}
 
       {appTab === 'voting' && (
-        <Card title={t('dining_vote')} theme={theme}>
+        <Card title={isPollActive ? "투표 진행 중" : "새 투표 만들기"} theme={theme}>
           <div className="space-y-12 py-8">
-            <div className="text-center">
-              <h3 className={cn(
-                "text-3xl font-black mb-3 transition-colors duration-500",
-                theme === 'dark' ? "text-slate-100" : "text-gray-900"
-              )}>{t('vote_q')}</h3>
-              <p className="text-xs font-bold text-gray-500 tracking-widest uppercase">{t('vote_active')}</p>
-            </div>
+            {!isPollActive ? (
+              /* POLL CREATION UI */
+              <div className="max-w-2xl mx-auto space-y-8">
+                <div className="text-center">
+                  <h3 className={cn(
+                    "text-3xl font-black mb-3",
+                    theme === 'dark' ? "text-slate-100" : "text-gray-900"
+                  )}>새로운 투표 주제를 정해주세요</h3>
+                  <p className="text-xs font-bold text-gray-500 tracking-widest uppercase">질문과 항목을 구성하여 투표를 시작하세요</p>
+                </div>
 
-            <div className="space-y-8 max-w-2xl mx-auto">
-              {Object.entries(voteCount).map(([key, count]) => {
-                const percentage = Math.round((count / totalVotes) * 100);
-                return (
-                  <div key={key} className="space-y-3">
-                    <div className="flex justify-between items-end">
-                      <span className={cn(
-                        "text-lg font-bold uppercase transition-colors duration-500",
-                        theme === 'dark' ? "text-slate-200" : "text-gray-900"
-                      )}>{key}</span>
-                      <span className="text-sm font-bold text-gray-500">{percentage}% ({count})</span>
-                    </div>
-                    <div className={cn(
-                      "relative h-4 rounded-full overflow-hidden cursor-pointer group transition-colors",
-                      theme === 'dark' ? "bg-slate-800 hover:bg-slate-700" : "bg-gray-100 hover:bg-gray-200"
-                    )} onClick={() => handleVote(key, key)}>
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${percentage}%` }}
+                <div className="space-y-6">
+                  <div>
+                    <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 ml-1">투표 주제</label>
+                    <input
+                      value={pollTitle}
+                      onChange={e => setPollTitle(e.target.value)}
+                      placeholder="예) 다음 회식때 가고 싶은 곳은?"
+                      className={cn(
+                        "w-full p-4 rounded-2xl text-lg font-bold outline-none border transition-all shadow-sm",
+                        theme === 'dark' ? "bg-slate-900 border-slate-700 text-white focus:border-blue-500" : "bg-white border-gray-200 text-gray-900 focus:border-blue-500"
+                      )}
+                    />
+                  </div>
+
+                  <div className="space-y-4">
+                    <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 ml-1">투표 항목 ({pollOptions.length})</label>
+                    <div className="flex gap-2">
+                      <input
+                        value={newOption}
+                        onChange={e => setNewOption(e.target.value)}
+                        placeholder="항목 추가..."
+                        onKeyDown={e => e.key === 'Enter' && handleAddOption()}
                         className={cn(
-                          "h-full rounded-full transition-all",
-                          key === 'bbq' ? "bg-blue-600 shadow-sm" : "bg-gray-400 group-hover:bg-gray-500"
+                          "flex-1 p-3 rounded-xl text-sm font-bold outline-none border transition-all",
+                          theme === 'dark' ? "bg-slate-900 border-slate-700 text-white focus:border-blue-500" : "bg-white border-gray-200 text-gray-900 focus:border-blue-500"
                         )}
                       />
+                      <button
+                        onClick={handleAddOption}
+                        className="px-6 py-3 bg-slate-800 text-white rounded-xl font-bold hover:bg-slate-900 transition-colors shadow-sm"
+                      >
+                        추가
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {pollOptions.map((opt, idx) => (
+                        <div key={idx} className={cn(
+                          "flex items-center justify-between p-3 rounded-xl border",
+                          theme === 'dark' ? "bg-slate-800/50 border-slate-700 text-slate-200" : "bg-gray-50 border-gray-100 text-gray-700"
+                        )}>
+                          <span className="text-sm font-bold">{opt}</span>
+                          <button 
+                            onClick={() => setPollOptions(prev => prev.filter((_, i) => i !== idx))}
+                            className="text-gray-400 hover:text-rose-500 transition-colors"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      ))}
+                      {pollOptions.length === 0 && (
+                        <div className="col-span-full py-10 text-center text-gray-400 text-xs font-bold border border-dashed rounded-xl border-gray-200">
+                          항목이 없습니다.
+                        </div>
+                      )}
                     </div>
                   </div>
-                );
-              })}
-            </div>
 
-            {hasVoted && (
-              <p className="text-center text-xs font-bold text-green-600 mt-4 tracking-widest">{t('vote_reg')}</p>
+                  <button
+                    onClick={handleCreatePoll}
+                    className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black text-lg tracking-widest hover:bg-blue-700 transition-all shadow-lg shadow-blue-200/50 active:scale-95"
+                  >
+                    투표 저장 및 시작하기
+                  </button>
+                </div>
+              </div>
+            ) : (
+              /* VOTING UI */
+              <div className="max-w-2xl mx-auto space-y-8">
+                <div className="text-center relative">
+                  <h3 className={cn(
+                    "text-3xl font-black mb-3 transition-colors duration-500",
+                    theme === 'dark' ? "text-slate-100" : "text-gray-900"
+                  )}>{pollTitle}</h3>
+                  <div className="flex items-center justify-center gap-2">
+                    <p className="text-xs font-bold text-blue-600 tracking-widest uppercase">현재 투표가 진행 중입니다</p>
+                    <button 
+                      onClick={handleResetPoll}
+                      className="ml-4 text-[10px] font-black text-rose-500 hover:underline tracking-tighter"
+                    >
+                      종료 및 새로 만들기
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                  {Object.entries(voteCount).map(([key, count]) => {
+                    const percentage = totalVotes === 0 ? 0 : Math.round((count / totalVotes) * 100);
+                    return (
+                      <div key={key} className="space-y-3">
+                        <div className="flex justify-between items-end">
+                          <span className={cn(
+                            "text-lg font-bold uppercase transition-colors duration-500",
+                            theme === 'dark' ? "text-slate-200" : "text-gray-900"
+                          )}>{key}</span>
+                          <span className="text-sm font-bold text-gray-500">{percentage}% ({count})</span>
+                        </div>
+                        <div className={cn(
+                          "relative h-6 rounded-2xl overflow-hidden cursor-pointer group transition-all",
+                          theme === 'dark' ? "bg-slate-800 hover:bg-slate-700" : "bg-gray-100 hover:bg-gray-200",
+                          hasVoted && "cursor-default"
+                        )} onClick={() => handleVote(key)}>
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: `${percentage}%` }}
+                            className={cn(
+                              "h-full rounded-2xl transition-all",
+                              hasVoted ? "bg-blue-600 shadow-sm" : "bg-blue-400 group-hover:bg-blue-500"
+                            )}
+                          >
+                            {percentage > 10 && (
+                              <div className="h-full flex items-center justify-end px-4 text-[10px] font-black text-white">
+                                {percentage}%
+                              </div>
+                            )}
+                          </motion.div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {hasVoted && (
+                  <div className={cn(
+                    "p-6 rounded-2xl text-center border",
+                    theme === 'dark' ? "bg-blue-900/20 border-blue-800 text-blue-400" : "bg-blue-50 border-blue-100 text-blue-700"
+                  )}>
+                    <p className="text-sm font-black tracking-widest">✅ 투표를 완료하셨습니다!</p>
+                  </div>
+                )}
+              </div>
             )}
           </div>
         </Card>
@@ -529,12 +710,23 @@ export const Apps = ({ user, addNotification, theme }) => {
                 <h4 className="text-xs font-bold text-gray-500 uppercase tracking-widest">Reviews</h4>
                 <div className="max-h-40 overflow-y-auto space-y-3 pr-2">
                   {Array.isArray(selectedShop?.reviews) && selectedShop.reviews.map((rv, i) => (
-                    <div key={i} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                    <div key={i} className={cn(
+                      "p-4 rounded-xl border shadow-sm",
+                      theme === 'dark' ? "bg-slate-800 border-slate-700" : "bg-white border-gray-200"
+                    )}>
                       <p className="text-[10px] font-bold text-gray-400 mb-1.5 tracking-wider">{rv?.user || 'Unknown'} <span className="text-yellow-500">★{rv?.rating || '0.0'}</span></p>
-                      <p className="text-sm text-gray-800 font-medium">{rv?.comment || '내용 없음'}</p>
+                      <p className={cn(
+                        "text-sm font-medium",
+                        theme === 'dark' ? "text-slate-200" : "text-gray-800"
+                      )}>{rv?.comment || '내용 없음'}</p>
                     </div>
                   ))}
-                  {(!selectedShop?.reviews || selectedShop.reviews.length === 0) && <p className="text-sm text-gray-500 font-medium text-center py-4 bg-gray-50 rounded-xl">리뷰가 없습니다.</p>}
+                  {(!selectedShop?.reviews || selectedShop.reviews.length === 0) && (
+                    <p className={cn(
+                      "text-sm font-medium text-center py-4 rounded-xl",
+                      theme === 'dark' ? "bg-slate-800/50 text-slate-500" : "bg-gray-50 text-gray-500"
+                    )}>리뷰가 없습니다.</p>
+                  )}
                 </div>
                 <div className="flex gap-2">
                   <select id="revRating" defaultValue="5.0" className={cn(
