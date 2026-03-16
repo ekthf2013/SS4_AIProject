@@ -33,7 +33,7 @@ export const TRANSLATIONS = {
     onboarding_sub: "성장 및 통합 포털",
     tab_guide: "가이드",
     tab_growth: "성장",
-    tab_education: "교육",
+    tab_education: "사내 교육",
     tab_conference: "컨퍼런스",
     tab_dept: "부서 현황",
     tab_my: "나의 현황",
