@@ -19,7 +19,9 @@ import {
   Edit3,
   Mic,
   GraduationCap,
-  Users
+  Users,
+  Check,
+  BellOff
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -35,14 +37,18 @@ import { Onboarding } from '../3.Onboarding/Onboarding';
 import { KnowledgeBase } from '../4.KnowledgeBase/KnowledgeBase';
 import { Apps } from '../5.Apps/Apps';
 import { SettingsPage } from '../6.Settings/SettingsPage';
+import logo from '../assets/logo.png';
 
 const MainAppContent = () => {
   const { lang, setLang, t } = useTranslation();
   const [user, setUser] = useState(null);
   const [members, setMembers] = useState(INITIAL_MEMBERS);
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [theme, setTheme] = useState('light');
   const [isCoPilotOpen, setIsCoPilotOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
 
   const [chatMessages, setChatMessages] = useState([
     { role: 'ai', text: t('ai_greet') }
@@ -61,6 +67,10 @@ const MainAppContent = () => {
     setUser(userInfo);
   };
 
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'light' ? 'dark' : 'light');
+  };
+
   const sendMessage = () => {
     if (!inputMessage.trim()) return;
     setChatMessages(prev => [...prev, { role: 'user', text: inputMessage.toUpperCase() }]);
@@ -69,6 +79,24 @@ const MainAppContent = () => {
       setChatMessages(prev => [...prev, { role: 'ai', text: t('ai_proc') }]);
     }, 1000);
   };
+
+  const markAsRead = (id) => {
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, unread: false } : n));
+  };
+
+  const addNotification = (text) => {
+    setNotifications(prev => [
+      { id: Date.now(), text, time: '방금 전', unread: true },
+      ...prev
+    ]);
+  };
+
+  const clearAllNotifications = () => {
+    setNotifications([]);
+    setIsNotificationsOpen(false);
+  };
+
+  const unreadCount = notifications.filter(n => n.unread).length;
 
   const NAV_CATEGORIES = [
     {
@@ -90,10 +118,15 @@ const MainAppContent = () => {
       ]
     },
     {
-      category: null,
+      category: '기타',
       items: [
         { id: 'apps', icon: Layers, label: 'Apps' },
-        { id: 'settings', icon: Settings, label: 'Settings' }
+      ]
+    },
+    {
+      category: '설정',
+      items: [
+        { id: 'settings', icon: Settings, label: '설정' }
       ]
     }
   ];
@@ -108,16 +141,29 @@ const MainAppContent = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#f9fafb] text-gray-800 flex font-sans">
+    <div className={cn(
+      "min-h-screen font-sans flex transition-colors duration-500",
+      theme === 'dark' ? "bg-[#0f172a] text-slate-100" : "bg-[#f9fafb] text-gray-800"
+    )}>
       {!user ? (
         <LoginView onLogin={handleLogin} />
       ) : (
         <>
           {/* SIDEBAR */}
-          <nav className="w-64 bg-white border-r border-gray-200 flex flex-col py-6 z-40 fixed h-full shadow-sm">
-            <div className="flex items-center gap-2 px-6 mb-8 cursor-pointer">
-              <Shield className="text-blue-600 outline-none" size={24} fill="currentColor" />
-              <span className="text-xl font-black text-blue-600 tracking-tight">SDV System</span>
+          <nav className={cn(
+            "w-64 border-r flex flex-col py-6 z-40 fixed h-full shadow-sm transition-colors duration-500",
+            theme === 'dark' ? "bg-[#1e293b] border-slate-800" : "bg-white border-gray-200"
+          )}>
+            <div 
+              onClick={() => setActiveTab('dashboard')}
+              className="px-5 mb-8 cursor-pointer hover:opacity-80 transition-opacity"
+            >
+              <div className={cn(
+                "py-2 px-2 rounded-xl w-full flex justify-center transition-colors",
+                theme === 'dark' ? "bg-white shadow-sm" : ""
+              )}>
+                <img src={logo} alt="Suresoft Logo" className="h-[4.5rem] object-contain" />
+              </div>
             </div>
 
             <div className="flex-1 overflow-y-auto px-4 space-y-6">
@@ -133,12 +179,12 @@ const MainAppContent = () => {
                       className={cn(
                         "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all outline-none",
                         activeTab === item.id 
-                          ? "bg-blue-50 text-blue-600" 
-                          : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
+                          ? (theme === 'dark' ? "bg-blue-600/20 text-blue-400" : "bg-blue-50 text-blue-600") 
+                          : (theme === 'dark' ? "text-slate-400 hover:bg-slate-800 hover:text-slate-200" : "text-gray-500 hover:bg-gray-50 hover:text-gray-900")
                       )}
                     >
                       {activeTab === item.id && (
-                         <div className="absolute left-0 w-1 h-8 bg-blue-600 rounded-r-md" />
+                        <div className="absolute left-0 w-1 h-8 bg-blue-600 rounded-r-md" />
                       )}
                       <item.icon size={18} className={cn(activeTab === item.id ? "text-blue-600" : "text-gray-400")} />
                       {item.label}
@@ -150,22 +196,28 @@ const MainAppContent = () => {
 
             <div className="mt-auto px-4 space-y-4">
               <div className="px-2">
-                 <LanguageToggle />
+                <LanguageToggle theme={theme} />
               </div>
-              <div className="bg-gray-50 rounded-xl p-4 flex items-center justify-between border border-gray-100">
+              <div className={cn(
+                "rounded-xl p-4 flex items-center justify-between border transition-colors duration-500",
+                theme === 'dark' ? "bg-slate-800 border-slate-700" : "bg-gray-50 border-gray-100"
+              )}>
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-sm">
                     {user.name.charAt(0)}
                   </div>
                   <div className="flex flex-col items-start">
-                    <p className="text-sm font-bold text-gray-900 leading-tight">
-                       {user.name}
+                    <p className={cn(
+                      "text-sm font-bold leading-tight",
+                      theme === 'dark' ? "text-slate-100" : "text-gray-900"
+                    )}>
+                      {user.name}
                     </p>
                     <p className="text-[10px] text-gray-500 leading-tight">
-                       {user.team} | {user.position}
+                      {user.team} | {user.position}
                     </p>
                     {user.role === USER_ROLES.ADMIN && (
-                       <span className="text-[8px] font-bold text-red-500 mt-0.5 tracking-wider uppercase">ADMIN</span>
+                      <span className="text-[8px] font-bold text-red-500 mt-0.5 tracking-wider uppercase">ADMIN</span>
                     )}
                   </div>
                 </div>
@@ -183,16 +235,128 @@ const MainAppContent = () => {
           {/* MAIN LAYOUT */}
           <div className="flex-1 ml-64 flex flex-col h-screen overflow-hidden">
             {/* HEADER */}
-            <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-8 z-30 shrink-0">
+            <header className={cn(
+              "h-16 border-b flex items-center justify-between px-8 z-30 shrink-0 transition-colors duration-500",
+              theme === 'dark' ? "bg-[#1e293b] border-slate-800" : "bg-white border-gray-200"
+            )}>
               <div className="flex items-center">
-                 <h2 className="text-xl font-bold text-gray-900 tracking-tight">{getActiveLabel()}</h2>
+                <h2 className={cn(
+                  "text-xl font-bold tracking-tight",
+                  theme === 'dark' ? "text-slate-100" : "text-gray-900"
+                )}>{getActiveLabel()}</h2>
               </div>
 
-              <div className="flex items-center gap-4">
-                <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-full transition-colors relative">
+              <div className="flex items-center gap-4 relative">
+                <button 
+                  onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+                  className={cn(
+                    "p-2 rounded-full transition-all relative outline-none",
+                    isNotificationsOpen 
+                      ? (theme === 'dark' ? "bg-slate-800 text-blue-400" : "bg-blue-50 text-blue-600") 
+                      : (theme === 'dark' ? "text-slate-400 hover:text-slate-200 hover:bg-slate-800" : "text-gray-400 hover:text-gray-600 hover:bg-gray-50")
+                  )}
+                >
                   <Bell size={20} />
-                  <div className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full border-2 border-white" />
+                  {unreadCount > 0 && (
+                    <div className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full border-2 border-white animate-pulse" />
+                  )}
                 </button>
+
+                <AnimatePresence>
+                  {isNotificationsOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                      className={cn(
+                        "absolute top-12 right-0 w-80 rounded-2xl shadow-2xl border overflow-hidden z-[100] transition-colors duration-500",
+                        theme === 'dark' ? "bg-slate-900 border-slate-700" : "bg-white border-gray-200"
+                      )}
+                    >
+                      <div className={cn(
+                        "p-4 border-b flex items-center justify-between",
+                        theme === 'dark' ? "bg-slate-800/50 border-slate-700" : "bg-gray-50 border-gray-100"
+                      )}>
+                        <span className={cn(
+                          "text-sm font-black",
+                          theme === 'dark' ? "text-slate-100" : "text-gray-900"
+                        )}>알림 센터</span>
+                        {notifications.length > 0 && (
+                          <button 
+                            onClick={clearAllNotifications}
+                            className={cn(
+                              "text-[10px] font-bold transition-colors uppercase tracking-widest",
+                              theme === 'dark' ? "text-slate-400 hover:text-slate-200" : "text-gray-400 hover:text-gray-600"
+                            )}
+                          >
+                            전체 삭제
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="max-h-[350px] overflow-y-auto">
+                        {notifications.length > 0 ? (
+                          <div className={cn(
+                            "divide-y",
+                            theme === 'dark' ? "divide-slate-800/50" : "divide-gray-50"
+                          )}>
+                            {notifications.map((n) => (
+                              <div 
+                                key={n.id} 
+                                className={cn(
+                                  "p-4 transition-colors cursor-pointer group flex items-start gap-3",
+                                  theme === 'dark' 
+                                    ? (n.unread ? "bg-blue-900/10 hover:bg-slate-800" : "bg-slate-900 hover:bg-slate-800")
+                                    : (n.unread ? "bg-blue-50/30 hover:bg-gray-50" : "bg-white hover:bg-gray-50")
+                                )}
+                                onClick={() => markAsRead(n.id)}
+                              >
+                                <div className={cn(
+                                  "w-2 h-2 rounded-full mt-1.5 shrink-0",
+                                  n.unread ? "bg-blue-500" : (theme === 'dark' ? "bg-slate-700" : "bg-gray-200")
+                                )} />
+                                <div className="flex-1">
+                                  <p className={cn(
+                                    "text-xs leading-relaxed",
+                                    n.unread 
+                                      ? (theme === 'dark' ? "text-slate-100 font-bold" : "text-gray-900 font-bold") 
+                                      : (theme === 'dark' ? "text-slate-400 font-medium" : "text-gray-500 font-medium")
+                                  )}>
+                                    {n.text}
+                                  </p>
+                                  <p className={cn(
+                                    "text-[10px] mt-1 font-bold italic",
+                                    theme === 'dark' ? "text-slate-500" : "text-gray-400"
+                                  )}>{n.time}</p>
+                                </div>
+                                {n.unread && (
+                                  <Check size={14} className="text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity mt-1" />
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="p-12 flex flex-col items-center justify-center gap-3 text-center">
+                            <div className={cn(
+                              "p-4 rounded-full",
+                              theme === 'dark' ? "bg-slate-800 text-slate-500" : "bg-gray-50 text-gray-300"
+                            )}>
+                              <BellOff size={32} />
+                            </div>
+                            <p className={cn(
+                              "text-[11px] font-bold",
+                              theme === 'dark' ? "text-slate-500" : "text-gray-400"
+                            )}>새로운 알림이 없습니다.</p>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="p-3 bg-gray-50 border-t border-gray-100 text-center">
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">System Integrated v4.2</p>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </header>
 
@@ -205,17 +369,19 @@ const MainAppContent = () => {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
                 >
-                  {activeTab === 'dashboard' && <Dashboard />}
-                   {activeTab === 'onboarding' && (
-                    <Onboarding 
-                      user={user} 
-                      members={members} 
-                      setMembers={setMembers} 
+                   {activeTab === 'dashboard' && <Dashboard user={user} theme={theme} />}
+                  {activeTab === 'onboarding' && (
+                    <Onboarding
+                      user={user}
+                      members={members}
+                      setMembers={setMembers}
+                      addNotification={addNotification}
+                      theme={theme}
                     />
                   )}
-                  {activeTab === 'knowledge' && <KnowledgeBase />}
-                  {activeTab === 'apps' && <Apps user={user} />}
-                  {activeTab === 'settings' && <SettingsPage />}
+                  {activeTab === 'knowledge' && <KnowledgeBase theme={theme} />}
+                  {activeTab === 'apps' && <Apps user={user} addNotification={addNotification} theme={theme} />}
+                  {activeTab === 'settings' && <SettingsPage user={user} theme={theme} toggleTheme={toggleTheme} />}
                 </motion.div>
               </AnimatePresence>
             </main>
@@ -260,8 +426,8 @@ const MainAppContent = () => {
                     <div key={i} className={cn("flex flex-col", msg.role === 'user' ? "items-end" : "items-start")}>
                       <div className={cn(
                         "max-w-[85%] p-3.5 text-sm font-medium leading-relaxed rounded-2xl shadow-sm",
-                        msg.role === 'user' 
-                          ? "bg-blue-600 text-white rounded-tr-sm" 
+                        msg.role === 'user'
+                          ? "bg-blue-600 text-white rounded-tr-sm"
                           : "bg-white text-gray-800 border border-gray-100 rounded-tl-sm"
                       )}>
                         {msg.text}

@@ -34,7 +34,10 @@ export const USER_ACCOUNTS = [
   { id: 'shchoi', pw: '1234', name: '최서희', team: 'SDV솔루션4팀', position: '선임', role: USER_ROLES.USER },
   { id: 'yhkim2', pw: '1234', name: '김연희', team: 'SDV솔루션4팀', position: '전임', role: USER_ROLES.USER },
   { id: 'jhkim7', pw: '1234', name: '김지환', team: 'SDV솔루션4팀', position: '전임', role: USER_ROLES.USER },
+  { id: 'dsbyun', pw: '1234', name: '변다솔', team: 'SDV솔루션4팀', position: '전임', role: USER_ROLES.USER },
+  { id: 'dhkim5', pw: '1234', name: '김동환', team: 'SDV솔루션4팀', position: '전임', role: USER_ROLES.USER },
   { id: 'jskim2', pw: '1234', name: '김지송', team: 'SDV솔루션4팀', position: '인턴', role: USER_ROLES.USER },
+  { id: 'jhsung', pw: '1234', name: '성재협', team: 'SDV솔루션4팀', position: '인턴', role: USER_ROLES.USER },
 ];
 
 // Checklist Configuration with Categories

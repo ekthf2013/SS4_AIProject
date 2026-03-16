@@ -4,6 +4,7 @@ import { ShieldCheck } from 'lucide-react';
 import { useTranslation } from '../shared/Translations';
 import { SectionHeader } from '../shared/SharedComponents';
 import { USER_ACCOUNTS } from '../shared/MockData';
+import logo from '../assets/logo.png';
 
 export const LoginView = ({ onLogin }) => {
   const { t } = useTranslation();
@@ -13,7 +14,7 @@ export const LoginView = ({ onLogin }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
     const foundUser = USER_ACCOUNTS.find(acc => acc.id === userId.toLowerCase() && acc.pw === password);
-    
+
     if (foundUser) {
       onLogin(foundUser);
     } else {
@@ -29,12 +30,12 @@ export const LoginView = ({ onLogin }) => {
         className="w-full max-w-md bg-white rounded-3xl shadow-xl border border-gray-100 p-12 space-y-8"
       >
         <div className="text-center space-y-4">
-          <div className="w-20 h-20 bg-blue-50 rounded-2xl mx-auto flex items-center justify-center border border-blue-100">
-            <ShieldCheck className="w-10 h-10 text-blue-600" />
+          <div className="mb-8">
+            <img src={logo} alt="Suresoft Logo" className="h-12 mx-auto object-contain" />
           </div>
           <div className="space-y-2">
-             <h1 className="text-2xl font-black text-gray-900">{t('auth_title')}</h1>
-             <p className="text-sm font-bold text-gray-500">{t('auth_subtitle')}</p>
+            <h1 className="text-2xl font-black text-gray-900">{t('auth_title')}</h1>
+            <p className="text-sm font-bold text-gray-500">{t('auth_subtitle')}</p>
           </div>
         </div>
 
@@ -56,7 +57,7 @@ export const LoginView = ({ onLogin }) => {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="비밀번호를 입력하세요 (기본값: 1234)"
+                placeholder="비밀번호를 입력하세요."
                 className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all font-bold tracking-wider placeholder-gray-400"
               />
             </div>
