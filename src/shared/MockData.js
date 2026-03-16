@@ -148,7 +148,7 @@ export const CONFERENCE_DATA = [
   {
     id: 5,
     title: "오토모티브 테스팅 엑스포 코리아 2026",
-    desc: "AI 기반 자동화와 차세대 검증 기술에 특화된 국내 최대 규모의 자동차 테스팅 전문 전시회입니다.",
+    desc: "소프트웨어 검증 및 가상 테스팅 기술에 특화된 국내 최대 테스팅 기술 전시회입니다.",
     location: "일산 킨텍스",
     date: "2026-03-18",
     type: "domestic",
@@ -177,16 +177,6 @@ export const CONFERENCE_DATA = [
   },
   {
     id: 8,
-    title: "ICST 2026 (IEEE Int'l Conf on Software Testing)",
-    desc: "소프트웨어 테스팅과 검증 분야의 세계적 권위를 가진 IEEE 학술대회가 올해는 대전에서 열립니다.",
-    location: "대전",
-    date: "2026-04-20",
-    type: "domestic",
-    tags: ["Academic", "IEEE", "Testing"],
-    link: "https://researchr.org/conference/icst-2026"
-  },
-  {
-    id: 9,
     title: "AI EXPO KOREA 2026 (국제인공지능대전)",
     desc: "생성형 AI, 온디바이스 AI를 포함한 전 산업 분야의 최신 AI 기술을 경험할 수 있는 국내 최대 AI 전문 전시회입니다.",
     location: "서울 코엑스 (COEX)",
@@ -196,7 +186,7 @@ export const CONFERENCE_DATA = [
     link: "https://www.aiexpo.co.kr/"
   },
   {
-    id: 10,
+    id: 9,
     title: "EUROPEAN SDV SUMMIT 2026",
     desc: "유럽 지역의 SDV 생태계와 중앙 집중형 E/E 아키텍처 소프트웨어 적용 사례를 중점적으로 논의합니다.",
     location: "독일 슈투트가르트",
@@ -206,27 +196,7 @@ export const CONFERENCE_DATA = [
     link: "https://www.ecv-events.com/sdv-summit-2026"
   },
   {
-    id: 11,
-    title: "TEST AUTOMATION SUMMIT SEOUL 2026",
-    desc: "AI 기반 자동화 테스트와 품질 생태계를 주제로 한 디지털 시대의 핵심 테스팅 전략 써밋입니다.",
-    location: "서울",
-    date: "2026-06-19",
-    type: "domestic",
-    tags: ["Automation", "QA", "Quality"],
-    link: "https://testingmind.com/event/test-automation-summit-seoul-2026/"
-  },
-  {
-    id: 12,
-    title: "AAAI 2026 SUMMER SYMPOSIUM SEOUL",
-    desc: "비즈니스 지능형 전환과 에이전트 설계 등 최첨단 AI 이론을 다루는 글로벌 심포지엄입니다.",
-    location: "서울 동국대학교",
-    date: "2026-06-22",
-    type: "domestic",
-    tags: ["AI", "Research", "Symposium"],
-    link: "https://aaai.org/symposia/summer-symposium-series-2026/"
-  },
-  {
-    id: 13,
+    id: 10,
     title: "SDV USA 2026",
     desc: "차세대 아키텍처와 플랫폼 개발 전략을 공유하며 자율주행과 SDV의 융합을 다루는 핵심 써밋입니다.",
     location: "미국 샌프란시스코",
@@ -236,7 +206,17 @@ export const CONFERENCE_DATA = [
     link: "https://www.we-conect.com/events/sdv-usa/"
   },
   {
-    id: 14,
+    id: 11,
+    title: "AID 2026 (AI & Design International Conference)",
+    desc: "AI 기반 디자인 이론과 툴, 자동화 설계 애플리케이션을 전문적으로 다루는 학술 및 기술 컨퍼런스입니다.",
+    location: "서울",
+    date: "2026-07-17",
+    type: "domestic",
+    tags: ["AI", "Design", "Automation"],
+    link: "http://ic-aid.com/"
+  },
+  {
+    id: 12,
     title: "9th AI SUMMIT SEOUL & EXPO",
     desc: "글로벌 AI 트렌드와 산업별 응용 사례를 집중 조명하는 서울의 대표적인 AI 비즈니스 컨퍼런스입니다.",
     location: "서울 코엑스 (COEX)",
@@ -246,7 +226,7 @@ export const CONFERENCE_DATA = [
     link: "http://aisummitseoul.com/"
   },
   {
-    id: 15,
+    id: 13,
     title: "SDV & AV TECHNOLOGY SUMMIT 2026",
     desc: "실리콘밸리의 기술력을 바탕으로 SDV 및 자율주행차의 상용화 전략과 AI 융합 트렌드를 논의합니다.",
     location: "미국 산타클라라",
