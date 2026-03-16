@@ -117,7 +117,7 @@ function pathFindingPlugin() {
           return;
         }
 
-        // Generate Exam API
+         // Generate Exam API
         if (req.url === '/api/generate-exam' && req.method === 'POST') {
           let body = '';
           req.on('data', chunk => { body += chunk.toString(); });
@@ -155,6 +155,36 @@ function pathFindingPlugin() {
                    return res.end(JSON.stringify({ success: false, error: 'Unexpected output format: ' + stdout }));
                 }
 
+             } catch (error) {
+                console.error('Exec error:', error);
+                return res.end(JSON.stringify({ success: false, error: error.message }));
+             }
+          });
+          return;
+        }
+
+        // List Sources API
+        if (req.url === '/api/list-sources' && req.method === 'POST') {
+          let body = '';
+          req.on('data', chunk => { body += chunk.toString(); });
+          req.on('end', async () => {
+             res.setHeader('Content-Type', 'application/json');
+             try {
+                const { notebookId } = JSON.parse(body);
+                if(!notebookId) {
+                   return res.end(JSON.stringify({ success: false, error: 'notebookId is required' }));
+                }
+
+                console.log(`Executing List Sources for notebook: ${notebookId}`);
+                const command = `nlm source list ${notebookId}`;
+                const { stdout, stderr } = await execPromise(command);
+
+                if(stderr) {
+                  console.error('NLM Stderr:', stderr);
+                }
+
+                const parsed = JSON.parse(stdout);
+                return res.end(JSON.stringify({ success: true, data: parsed }));
              } catch (error) {
                 console.error('Exec error:', error);
                 return res.end(JSON.stringify({ success: false, error: error.message }));

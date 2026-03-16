@@ -9,13 +9,44 @@ import { cn } from '../shared/utils';
 export const KnowledgeBase = () => {
   const { t } = useTranslation();
   const [kbTab, setKbTab] = useState('vault');
-  const [selectedDoc, setSelectedDoc] = useState(STANDARD_DOCS[0]);
+  const [docs, setDocs] = useState([]);
+  const [selectedDoc, setSelectedDoc] = useState(null);
+  const [isLoadingDocs, setIsLoadingDocs] = useState(false);
   
   const [isGenerating, setIsGenerating] = useState(false);
   const [quizError, setQuizError] = useState(null);
   const [quiz, setQuiz] = useState(null);
   const [userAnswers, setUserAnswers] = useState({});
   const [quizResult, setQuizResult] = useState(null);
+
+  const notebookId = "d158823e-e7d7-4b96-97ef-173794f82ea5";
+
+  useEffect(() => {
+    const fetchDocs = async () => {
+      setIsLoadingDocs(true);
+      try {
+        const res = await fetch('/api/list-sources', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ notebookId })
+        });
+        const data = await res.json();
+        if (data.success) {
+          setDocs(data.data);
+          if (data.data.length > 0) {
+            setSelectedDoc(data.data[0]);
+          }
+        } else {
+          console.error("Failed to fetch docs:", data.error);
+        }
+      } catch (err) {
+        console.error("Error fetching docs:", err);
+      } finally {
+        setIsLoadingDocs(false);
+      }
+    };
+    fetchDocs();
+  }, []);
 
   const generateQuiz = async () => {
     setIsGenerating(true);
@@ -28,7 +59,7 @@ export const KnowledgeBase = () => {
       const res = await fetch('/api/generate-exam', {
          method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-         body: JSON.stringify({ notebookUrl: "https://notebooklm.google.com/notebook/d158823e-e7d7-4b96-97ef-173794f82ea5?authuser=1" })
+         body: JSON.stringify({ notebookUrl: `https://notebooklm.google.com/notebook/${notebookId}?authuser=1` })
       });
       const data = await res.json();
       if(data.success) {
@@ -76,42 +107,72 @@ export const KnowledgeBase = () => {
           <Card className="lg:col-span-1 h-[600px] overflow-y-auto bg-gray-50/50 border-gray-200">
             <h4 className="text-xs font-bold text-gray-500 tracking-widest pl-2 mb-4 uppercase">{t('doc_index')}</h4>
             <div className="space-y-3">
-              {STANDARD_DOCS.map(doc => (
-                <div key={doc.id} className="relative group">
-                  <button
-                    onClick={() => setSelectedDoc(doc)}
-                    className={cn(
-                      "w-full text-left p-5 rounded-2xl border transition-all flex items-start gap-4 shadow-sm",
-                      selectedDoc.id === doc.id ? "bg-white border-blue-500 ring-1 ring-blue-500/20" : "bg-white border-gray-100 hover:border-gray-300"
-                    )}
-                  >
-                    <BookOpen size={20} className={selectedDoc.id === doc.id ? "text-blue-600" : "text-gray-400 mt-0.5"} />
-                    <div className="flex-1">
-                      <p className="text-xs font-bold uppercase text-gray-400 mb-1">{doc.category}</p>
-                      <p className="text-sm font-bold text-gray-900 leading-tight">{doc.title}</p>
+              {isLoadingDocs ? (
+                 <div className="flex flex-col items-center justify-center h-32 space-y-2">
+                    <div className="flex gap-1">
+                      <div className="w-2 h-2 rounded-full bg-blue-600 animate-bounce" />
+                      <div className="w-2 h-2 rounded-full bg-blue-600 animate-bounce [animation-delay:-0.15s]" />
+                      <div className="w-2 h-2 rounded-full bg-blue-600 animate-bounce [animation-delay:-0.3s]" />
                     </div>
-                  </button>
-                </div>
-              ))}
+                    <p className="text-xs font-bold text-gray-500">문서 목록 불러오는 중...</p>
+                 </div>
+              ) : docs.length === 0 ? (
+                 <p className="text-sm font-bold text-gray-400 pl-2">등록된 문서가 없습니다.</p>
+              ) : (
+                docs.map(doc => (
+                  <div key={doc.id} className="relative group">
+                    <button
+                      onClick={() => setSelectedDoc(doc)}
+                      className={cn(
+                        "w-full text-left p-5 rounded-2xl border transition-all flex items-start gap-4 shadow-sm",
+                        selectedDoc?.id === doc.id ? "bg-white border-blue-500 ring-1 ring-blue-500/20" : "bg-white border-gray-100 hover:border-gray-300"
+                      )}
+                    >
+                      <BookOpen size={20} className={selectedDoc?.id === doc.id ? "text-blue-600" : "text-gray-400 mt-0.5"} />
+                      <div className="flex-1">
+                        <p className="text-xs font-bold uppercase text-gray-400 mb-1">{doc.type}</p>
+                        <p className="text-sm font-bold text-gray-900 leading-tight break-all">{doc.title}</p>
+                      </div>
+                    </button>
+                  </div>
+                ))
+              )}
             </div>
           </Card>
 
-          <Card className="lg:col-span-2 h-[600px] flex flex-col bg-white border border-gray-200 shadow-sm">
-            <div className="flex items-start justify-between border-b border-gray-100 pb-6 mb-6">
-              <div>
-                <span className="bg-blue-50 text-blue-600 px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-widest mb-3 inline-block border border-blue-100">
-                  {selectedDoc.category} {t('doc_type')}
-                </span>
-                <h2 className="text-2xl font-black text-gray-900">{selectedDoc.title}</h2>
+          <Card className="lg:col-span-2 h-[600px] flex flex-col bg-white border border-gray-200 shadow-sm overflow-hidden p-0">
+            {selectedDoc ? (
+              <div className="flex flex-col h-full w-full">
+                <div className="px-6 py-4 bg-gray-50 border-b border-gray-100 flex justify-between items-center z-10 shrink-0">
+                  <div>
+                    <span className="bg-blue-900 text-blue-300 px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-widest inline-block border border-blue-800">
+                      {selectedDoc.type || 'DOCUMENT'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <a href={`https://notebooklm.google.com/notebook/${notebookId}?authuser=1`} target="_blank" rel="noreferrer" className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-bold rounded-lg hover:bg-blue-700 transition-colors">
+                       NotebookLM 열기
+                    </a>
+                  </div>
+                </div>
+                
+                <div className="flex-1 w-full bg-white p-6 overflow-y-auto">
+                    <h2 className="text-xl font-bold text-gray-900 mb-6 border-b border-gray-100 pb-4">{selectedDoc.title}</h2>
+                    <div className="text-gray-500 font-medium text-sm leading-relaxed space-y-4">
+                       <p>[ 시스템 알림: NotebookLM 외부 원본 문서 뷰어는 해당 플랫폼 내에서 지원됩니다. 외부 접근 시 보안 정책에 따라 요약 메타데이터만 표시될 수 있습니다. ]</p>
+                       <p className="text-blue-600 mt-4">자세한 원본 내용을 확인하거나 질문하려면 우측 상단의 'NotebookLM 열기' 버튼을 클릭하세요.</p>
+                       {selectedDoc.url && (
+                         <a href={selectedDoc.url} target="_blank" rel="noreferrer" className="block mt-4 text-blue-500 hover:underline">원본 링크 확인: {selectedDoc.url}</a>
+                       )}
+                    </div>
+                </div>
               </div>
-              <div className="p-3 bg-blue-50 rounded-2xl text-blue-600">
-                 <Activity className="animate-pulse" size={24} />
-              </div>
-            </div>
-            <div className="flex-1 overflow-y-auto pr-4 font-medium text-gray-700 leading-relaxed whitespace-pre-line text-sm">
-              {selectedDoc.content}
-              {"\n\n"}{t('sys_analysis')}
-            </div>
+            ) : (
+               <div className="flex flex-col items-center justify-center h-full text-gray-500">
+                 <BookOpen size={48} className="mb-4 opacity-50" />
+                 <p className="font-bold">선택된 문서가 없습니다.</p>
+               </div>
+            )}
           </Card>
         </div>
       )}
