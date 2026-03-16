@@ -1,0 +1,62 @@
+@import "tailwindcss";
+
+@theme {
+  --color-neural-bg: #020617;
+  --color-neural-surface: #0f172a;
+  --color-electric-blue: #2563eb;
+  
+  --radius-premium: 3rem;
+  --radius-premium-lg: 4rem;
+  
+  --shadow-neon: 0 0 20px rgba(37, 99, 235, 0.2);
+  --shadow-neon-strong: 0 0 30px rgba(37, 99, 235, 0.4);
+}
+
+@layer base {
+  body {
+    @apply bg-neural-bg text-slate-200 font-black uppercase overflow-hidden;
+    font-family: 'Outfit', sans-serif;
+  }
+}
+
+@layer components {
+  .premium-card {
+    @apply bg-neural-surface/80 backdrop-blur-md rounded-premium shadow-2xl border border-slate-800/50 hover:shadow-neon transition-all duration-300;
+  }
+  
+  .neon-text {
+    @apply text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.5)];
+  }
+
+  .nav-item {
+    @apply flex items-center justify-center w-12 h-12 rounded-2xl transition-all duration-300 hover:bg-electric-blue/20 hover:text-electric-blue;
+  }
+
+  .nav-item-active {
+    @apply bg-electric-blue text-white shadow-neon;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
+
+@keyframes pulse-blue {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.animate-pulse-blue {
+  animation: pulse-blue 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}

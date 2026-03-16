@@ -1,0 +1,352 @@
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Utensils, MapPin, FileText, ChevronRight, X, Trash2 } from 'lucide-react';
+import { useTranslation } from '../shared/Translations';
+import { PremiumPage, SectionHeader, Card } from '../shared/SharedComponents';
+import { cn } from '../shared/utils';
+
+export const Apps = ({ user }) => {
+  const { t } = useTranslation();
+  const [appTab, setAppTab] = useState('welfare');
+  const [voteCount, setVoteCount] = useState({ hotpot: 12, bbq: 28, pasta: 8 });
+  const [hasVoted, setHasVoted] = useState(false);
+  const [departure, setDeparture] = useState('');
+  const [destination, setDestination] = useState('');
+  const [path, setPath] = useState(null);
+
+  const [restaurants, setRestaurants] = useState([]);
+  const [newShopName, setNewShopName] = useState('');
+  const [newShopDesc, setNewShopDesc] = useState('');
+  const [newShopRating, setNewShopRating] = useState('5.0');
+  const [selectedShop, setSelectedShop] = useState(null);
+
+  useEffect(() => {
+    fetch('/api/restaurants').then(res => res.json()).then(data => {
+      if (data.success) setRestaurants(data.data);
+    });
+  }, []);
+
+  const handleAddRestaurant = async () => {
+    if (!newShopName) return;
+    const ratingNum = parseFloat(newShopRating);
+    const body = {
+      name: newShopName,
+      cat: 'NEW',
+      rating: isNaN(ratingNum) ? 0.0 : ratingNum,
+      desc: newShopDesc || '신규 등록된 식당입니다.',
+      addedBy: user.id
+    };
+    const res = await fetch('/api/restaurants', { method: 'POST', body: JSON.stringify(body) });
+    const data = await res.json();
+    if (data.success) {
+      setRestaurants(prev => [...prev, data.data]);
+      setNewShopName('');
+      setNewShopDesc('');
+      setNewShopRating('5.0');
+    }
+  };
+
+  const handleDeleteRestaurant = async (id) => {
+    await fetch(`/api/restaurants/${id}`, { method: 'DELETE' });
+    setRestaurants(prev => prev.filter(r => r.id !== id));
+    setSelectedShop(null);
+  };
+
+  const handleCalculatePath = async () => {
+    if (!departure || !destination) return;
+
+    setPath(['경로 분석 중...', '노트북LM 데이터 추출 중...']);
+
+    try {
+      const res = await fetch('/api/path-finding', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ departure, destination })
+      });
+      const data = await res.json();
+      if (data.success) {
+        let answerText = data.answer || '';
+
+        // Remove python script's appended follow-up reminder
+        const reminderIndex = answerText.indexOf("EXTREMELY IMPORTANT: Is that ALL you need to know?");
+        if (reminderIndex !== -1) {
+          answerText = answerText.substring(0, reminderIndex);
+        }
+
+        // Clean up NotebookLM footnotes and orphaned punctuation
+        answerText = answerText.replace(/\n\s*\d+\s*\n/g, '\n'); // remove lines that are just numbers between newlines
+        answerText = answerText.replace(/\n\s*([.,])\s*/g, '$1\n'); // pull isolated periods and commas to the end of the previous line
+        answerText = answerText.replace(/^\s*\d+\s*$/gm, ''); // removing any stray number-only lines
+        answerText = answerText.replace(/^\s*([.,])\s*$/gm, ''); // removing any stray punctuation lines
+
+        const lines = answerText.split('\n')
+          .map(l => l.trim().replace(/\*\*/g, ''))
+          .filter(Boolean);
+
+        if (lines.length > 0) {
+          setPath(lines);
+        } else {
+          setPath(['결과를 가져올 수 없습니다.']);
+        }
+      } else {
+        setPath(['시스템 에러 발생: ' + data.error]);
+      }
+    } catch (err) {
+      setPath(['네트워크 통신 에러: ' + err.message]);
+    }
+  };
+
+  const handleVote = (key) => {
+    if (hasVoted) return;
+    setVoteCount(prev => ({ ...prev, [key]: prev[key] + 1 }));
+    setHasVoted(true);
+  };
+
+  const totalVotes = Object.values(voteCount).reduce((a, b) => a + b, 0);
+
+  return (
+    <PremiumPage>
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
+        <SectionHeader title={t('team_apps')} subtitle={t('apps_sub')} />
+        <div className="flex bg-white rounded-2xl p-1.5 gap-1 border border-gray-200 shadow-sm">
+          {['welfare', 'voting'].map(tab => (
+            <button
+              key={tab}
+              onClick={() => setAppTab(tab)}
+              className={cn(
+                "px-6 py-2 rounded-xl text-sm font-bold transition-all",
+                appTab === tab ? "bg-blue-600 text-white shadow-md shadow-blue-600/20" : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"
+              )}
+            >
+              {t(`tab_${tab}`)}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {appTab === 'welfare' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
+          <Card title={t('gourmet_portal')} className="space-y-6 bg-white border border-gray-200 shadow-sm">
+            <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2">
+              {restaurants.map((shop) => (
+                <div key={shop.id} onClick={() => setSelectedShop(shop)} className="cursor-pointer bg-gray-50 border border-gray-100 p-4 rounded-2xl flex items-center gap-4 hover:shadow-md transition-shadow">
+                  <div className="w-12 h-12 rounded-xl bg-orange-50 flex items-center justify-center text-orange-500 border border-orange-100">
+                    <Utensils size={24} />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{shop.cat}</p>
+                    <p className="text-sm font-bold text-gray-900 mt-0.5">{shop.name}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-bold text-yellow-500">★{shop.rating}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="pt-5 border-t border-gray-100 space-y-3">
+              <input value={newShopName} onChange={e => setNewShopName(e.target.value)} placeholder="새 식당 이름..." className="w-full bg-white border border-gray-200 rounded-xl p-3 text-sm font-bold text-gray-900 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder-gray-400" />
+              <div className="flex gap-2">
+                <select value={newShopRating} onChange={e => setNewShopRating(e.target.value)} className="w-20 bg-white border border-gray-200 rounded-xl p-3 text-sm font-bold text-gray-900 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all appearance-none text-center">
+                  <option value="5.0">5.0</option>
+                  <option value="4.5">4.5</option>
+                  <option value="4.0">4.0</option>
+                  <option value="3.5">3.5</option>
+                  <option value="3.0">3.0</option>
+                  <option value="2.5">2.5</option>
+                  <option value="2.0">2.0</option>
+                  <option value="1.5">1.5</option>
+                  <option value="1.0">1.0</option>
+                </select>
+                <input value={newShopDesc} onChange={e => setNewShopDesc(e.target.value)} placeholder="간단한 설명..." className="flex-1 bg-white border border-gray-200 rounded-xl p-3 text-sm font-bold text-gray-900 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder-gray-400" />
+              </div>
+              <button onClick={handleAddRestaurant} disabled={!newShopName} className="w-full py-3.5 bg-blue-600 disabled:bg-gray-200 disabled:text-gray-400 hover:bg-blue-700 rounded-xl font-bold tracking-widest text-white transition-colors shadow-sm">+ 추가하기</button>
+            </div>
+          </Card>
+
+          <Card title={t('wayfinding')} className="relative group lg:col-span-1 bg-white border border-gray-200 shadow-sm">
+            <div className="space-y-6">
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <p className="text-xs font-bold text-gray-500 uppercase tracking-widest pl-1">{t('curr_node')}</p>
+                  <input
+                    type="text"
+                    value={departure}
+                    onChange={(e) => setDeparture(e.target.value)}
+                    placeholder="출발지를 입력하세요."
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-sm font-bold text-gray-900 outline-none focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-500 transition-all placeholder-gray-400"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <p className="text-xs font-bold text-gray-500 uppercase tracking-widest pl-1">{t('target')}</p>
+                  <input
+                    type="text"
+                    value={destination}
+                    onChange={(e) => setDestination(e.target.value)}
+                    placeholder="목적지를 입력하세요."
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-sm font-bold text-gray-900 outline-none focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-500 transition-all placeholder-gray-400"
+                  />
+                </div>
+              </div>
+
+              <button
+                onClick={handleCalculatePath}
+                disabled={!departure || !destination}
+                className="w-full py-4 bg-blue-600 disabled:bg-gray-200 disabled:text-gray-400 text-white rounded-xl font-bold tracking-widest hover:bg-blue-700 transition-all shadow-sm"
+              >
+                {t('calc_path')}
+              </button>
+
+              {path && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-blue-50 rounded-2xl p-5 border border-blue-100 space-y-4"
+                >
+                  <div className="flex items-center gap-2 text-blue-600">
+                    <MapPin size={16} />
+                    <span className="text-xs font-bold tracking-widest uppercase">PATH OPTIMIZED</span>
+                  </div>
+                  <div className="space-y-3">
+                    {path.map((step, i) => (
+                      <div key={i} className="flex items-start gap-4">
+                        <div className="flex flex-col items-center pt-1.5">
+                          <div className="w-2 h-2 rounded-full bg-blue-600" />
+                          {i < path.length - 1 && <div className="w-0.5 h-6 bg-blue-200 my-1" />}
+                        </div>
+                        <p className="text-sm font-bold text-gray-800 leading-relaxed pt-0.5">{step}</p>
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </div>
+          </Card>
+
+
+          <Card title={t('corp_codex')} className="space-y-3 bg-white border border-gray-200 shadow-sm">
+            {['Welfare Policy v2.4', 'Security Protocol 2026', 'Code of Conduct'].map((item, i) => (
+              <button key={i} className="w-full flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 border border-gray-100 transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-white rounded-lg shadow-sm">
+                    <FileText className="text-blue-600" size={16} />
+                  </div>
+                  <span className="text-xs font-bold text-gray-700 tracking-wider">
+                     {item}
+                  </span>
+                </div>
+                <ChevronRight size={16} className="text-gray-400" />
+              </button>
+            ))}
+          </Card>
+        </div>
+      )}
+
+      {appTab === 'voting' && (
+        <Card title={t('dining_vote')} className="bg-white border border-gray-200 shadow-sm">
+          <div className="space-y-12 py-8">
+            <div className="text-center">
+              <h3 className="text-3xl font-black text-gray-900 mb-3">{t('vote_q')}</h3>
+              <p className="text-xs font-bold text-gray-500 tracking-widest uppercase">{t('vote_active')}</p>
+            </div>
+
+            <div className="space-y-8 max-w-2xl mx-auto">
+              {Object.entries(voteCount).map(([key, count]) => {
+                const percentage = Math.round((count / totalVotes) * 100);
+                return (
+                  <div key={key} className="space-y-3">
+                    <div className="flex justify-between items-end">
+                      <span className="text-lg font-bold text-gray-900 uppercase">{key}</span>
+                      <span className="text-sm font-bold text-gray-500">{percentage}% ({count})</span>
+                    </div>
+                    <div className="relative h-4 bg-gray-100 rounded-full overflow-hidden cursor-pointer group hover:bg-gray-200 transition-colors" onClick={() => handleVote(key)}>
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${percentage}%` }}
+                        className={cn(
+                          "h-full rounded-full transition-all",
+                          key === 'bbq' ? "bg-blue-600 shadow-sm" : "bg-gray-400 group-hover:bg-gray-500"
+                        )}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {hasVoted && (
+              <p className="text-center text-xs font-bold text-green-600 mt-4 tracking-widest">{t('vote_reg')}</p>
+            )}
+          </div>
+        </Card>
+      )}
+
+      <AnimatePresence>
+        {selectedShop && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/40 backdrop-blur-sm p-4">
+            <motion.div initial={{ scale: 0.95, y: 10 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 10 }} className="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-8 space-y-6 relative border border-gray-100">
+              <button onClick={() => setSelectedShop(null)} className="absolute top-5 right-5 text-gray-400 hover:text-gray-900 transition-colors bg-gray-50 hover:bg-gray-100 p-2 rounded-full"><X size={20} /></button>
+
+              <div className="flex items-center gap-5">
+                <div className="w-16 h-16 rounded-2xl bg-orange-50 flex items-center justify-center text-orange-500 border border-orange-100"><Utensils size={32} /></div>
+                <div>
+                  <h3 className="text-2xl font-black text-gray-900 mb-1">{selectedShop.name}</h3>
+                  <p className="text-xs font-bold text-gray-500 tracking-widest uppercase">
+                    <span className="text-blue-600">{selectedShop.cat}</span> &bull; ★{selectedShop.rating}
+                    {selectedShop.addedBy ? ` \u2022 By ${selectedShop.addedBy}` : ''}
+                  </p>
+                </div>
+              </div>
+
+              <p className="text-sm font-medium text-gray-600 leading-relaxed bg-gray-50 p-4 rounded-2xl border border-gray-100">{selectedShop.desc || '상세 정보가 없습니다.'}</p>
+
+              <div className="space-y-5 pt-6 border-t border-gray-100">
+                <h4 className="text-xs font-bold text-gray-500 uppercase tracking-widest">Reviews</h4>
+                <div className="max-h-40 overflow-y-auto space-y-3 pr-2">
+                  {selectedShop.reviews?.map((rv, i) => (
+                    <div key={i} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                      <p className="text-[10px] font-bold text-gray-400 mb-1.5 tracking-wider">{rv.user} <span className="text-yellow-500">★{rv.rating}</span></p>
+                      <p className="text-sm text-gray-800 font-medium">{rv.comment}</p>
+                    </div>
+                  ))}
+                  {(!selectedShop.reviews || selectedShop.reviews.length === 0) && <p className="text-sm text-gray-500 font-medium text-center py-4 bg-gray-50 rounded-xl">리뷰가 없습니다.</p>}
+                </div>
+                <div className="flex gap-2">
+                  <select id="revRating" defaultValue="5.0" className="w-20 bg-white border border-gray-300 rounded-xl p-3 text-sm font-bold text-gray-900 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors appearance-none text-center">
+                    <option value="5.0">5.0</option>
+                    <option value="4.5">4.5</option>
+                    <option value="4.0">4.0</option>
+                    <option value="3.5">3.5</option>
+                    <option value="3.0">3.0</option>
+                    <option value="2.5">2.5</option>
+                    <option value="2.0">2.0</option>
+                    <option value="1.5">1.5</option>
+                    <option value="1.0">1.0</option>
+                  </select>
+                  <input type="text" id="revComment" placeholder="리뷰 작성..." className="flex-1 bg-white border border-gray-300 rounded-xl p-3 text-sm font-bold text-gray-900 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors placeholder-gray-400" />
+                  <button onClick={async () => {
+                    const rating = parseFloat(document.getElementById('revRating').value);
+                    const comment = document.getElementById('revComment').value;
+                    if (!comment) return;
+                    const res = await fetch(`/api/restaurants/${selectedShop.id}/reviews`, { method: 'POST', body: JSON.stringify({ user: user.id, rating: isNaN(rating) ? 0 : rating, comment }) });
+                    const data = await res.json();
+                    if (data.success) {
+                      setSelectedShop(data.data);
+                      setRestaurants(prev => prev.map(r => r.id === data.data.id ? data.data : r));
+                      document.getElementById('revComment').value = '';
+                    }
+                  }} className="bg-blue-600 px-5 rounded-xl text-sm font-bold text-white hover:bg-blue-700 shadow-sm transition-colors">등록</button>
+                </div>
+              </div>
+
+              {selectedShop.addedBy === user.id && (
+                <button onClick={() => handleDeleteRestaurant(selectedShop.id)} className="w-full mt-6 py-4 bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 rounded-xl font-bold tracking-widest transition-colors flex items-center justify-center gap-2"><Trash2 size={18} /> 이 식당 목록에서 삭제</button>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </PremiumPage>
+  );
+};
