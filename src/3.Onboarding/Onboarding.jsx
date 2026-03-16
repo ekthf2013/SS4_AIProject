@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, Users, CheckCircle2, ChevronRight, MessageSquare, TrendingUp, BookOpen, BarChart2, GraduationCap, Mic, ExternalLink, Send, Activity, RotateCw, MapPin, Calendar, Link2, Filter } from 'lucide-react';
+import { User, Users, CheckCircle2, ChevronRight, MessageSquare, TrendingUp, BookOpen, BarChart2, GraduationCap, Mic, ExternalLink, Send, Activity, RotateCw, MapPin, Calendar, Link2, Filter, Plus, Trash2 } from 'lucide-react';
 import { useTranslation } from '../shared/Translations';
 import { USER_ROLES, CHECKLIST_CONFIG, CONFERENCE_DATA, CONFERENCE_SEARCH_TOPICS } from '../shared/MockData';
 import { PremiumPage, SectionHeader, Card } from '../shared/SharedComponents';
@@ -39,7 +39,93 @@ export const Onboarding = ({ user, members, setMembers, addNotification, theme }
   
   // Conference Live Data State
   const [liveConferences, setLiveConferences] = useState(CONFERENCE_DATA);
-  const [geminiApiKey, setGeminiApiKey] = useState(''); // 사용자가 입력할 수 있도록
+  const [geminiApiKey, setGeminiApiKey] = useState(''); 
+
+  // Google Sheets Integration State
+  const [sheetsApiUrl, setSheetsApiUrl] = useState(localStorage.getItem('google_sheets_url') || 'https://script.google.com/macros/s/AKfycbzS6wF09hgkKKojqe4uj3wQ6JUT2UA0CpgVDKop4e7-Umfl7vo5f9aEYekkKZkfBDlVpA/exec');
+  const [isConfigExpanded, setIsConfigExpanded] = useState(false);
+  const [internalTraining, setInternalTraining] = useState([]);
+  const [isTrainingLoading, setIsTrainingLoading] = useState(false);
+  const [newTraining, setNewTraining] = useState({ title: '', date: '', instructor: '', tag: '일반' });
+
+  // 1. Fetch Training from Google Sheets
+  const fetchTrainingFromSheets = async () => {
+    if (!sheetsApiUrl) {
+      // Fallback if no URL
+      setInternalTraining([
+        { id: 1, title: 'SW 아키텍처 기본 (로컬)', date: '2026-04-10', instructor: '김철수 책임', tag: '필수' },
+      ]);
+      return;
+    }
+    
+    setIsTrainingLoading(true);
+    try {
+      const response = await fetch(sheetsApiUrl);
+      const data = await response.json();
+      setInternalTraining(data);
+    } catch (err) {
+      console.error("Fetch Error:", err);
+    } finally {
+      setIsTrainingLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (mainTab === 'growth' && subTab === 'edu') {
+      fetchTrainingFromSheets();
+    }
+  }, [mainTab, subTab, sheetsApiUrl]);
+
+  // 2. Add Training to Google Sheets
+  const handleAddTraining = async () => {
+    if (!newTraining.title || !newTraining.date || !newTraining.instructor) {
+      alert("모든 필드를 입력해 주세요.");
+      return;
+    }
+
+    const payload = { 
+      action: 'add', 
+      ...newTraining, 
+      id: Date.now().toString() 
+    };
+
+    if (sheetsApiUrl) {
+      try {
+        await fetch(sheetsApiUrl, {
+          method: 'POST',
+          mode: 'no-cors', // GAS simple POST
+          body: JSON.stringify(payload)
+        });
+        setTimeout(fetchTrainingFromSheets, 1000); // Wait for GAS sync
+      } catch (err) {
+        alert("시트 업데이트 중 오류가 발생했습니다.");
+      }
+    } else {
+      setInternalTraining(prev => [...prev, payload]);
+    }
+    
+    setNewTraining({ title: '', date: '', instructor: '', tag: '일반' });
+  };
+
+  // 3. Remove Training from Google Sheets
+  const handleRemoveTraining = async (id) => {
+    if (!confirm("해당 교육 과정을 삭제하시겠습니까?")) return;
+
+    if (sheetsApiUrl) {
+      try {
+        await fetch(sheetsApiUrl, {
+          method: 'POST',
+          mode: 'no-cors',
+          body: JSON.stringify({ action: 'delete', id: id.toString() })
+        });
+        setTimeout(fetchTrainingFromSheets, 1000);
+      } catch (err) {
+        alert("시트 업데이트 중 오류가 발생했습니다.");
+      }
+    } else {
+      setInternalTraining(prev => prev.filter(t => t.id !== id));
+    }
+  };
 
   const allConferenceTags = useMemo(() => {
     const tags = new Set();
@@ -212,6 +298,18 @@ export const Onboarding = ({ user, members, setMembers, addNotification, theme }
                 )}
                 {mainTab === 'growth' && (
                   <>
+                    {(subTab === 'edu' && (role === USER_ROLES.MANAGER || role === USER_ROLES.ADMIN)) && (
+                      <button 
+                        onClick={() => setIsConfigExpanded(!isConfigExpanded)}
+                        className={cn(
+                          "mr-1 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black transition-all border",
+                          isConfigExpanded ? "bg-blue-100 border-blue-300 text-blue-600" : "bg-white border-gray-100 text-gray-400 hover:border-gray-200"
+                        )}
+                      >
+                        <Link2 size={12} />
+                        설정 {isConfigExpanded ? "닫기" : "열기"}
+                      </button>
+                    )}
                     <button
                       onClick={() => setSubTab('edu')}
                       className={cn(
@@ -219,7 +317,7 @@ export const Onboarding = ({ user, members, setMembers, addNotification, theme }
                         subTab === 'edu' ? "bg-white text-blue-600 shadow-sm" : "text-gray-500 hover:text-gray-800"
                       )}
                     >
-                      교육
+                       {t('tab_education')}
                     </button>
                     <button
                       onClick={() => setSubTab('conf')}
@@ -515,10 +613,153 @@ export const Onboarding = ({ user, members, setMembers, addNotification, theme }
                       <p>{edu.date}</p>
                     </div>
                     <button className="text-xs font-bold text-blue-600 hover:underline">신청하기</button>
+
+          <div className="lg:col-span-4 space-y-6">
+            {/* Manager: Config & Add Training UI */}
+            {(role === USER_ROLES.MANAGER || role === USER_ROLES.ADMIN) && (
+              <div className="space-y-4">
+
+                <AnimatePresence>
+                  {isConfigExpanded && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0, marginTop: 0 }}
+                      animate={{ height: 'auto', opacity: 1, marginTop: 12 }}
+                      exit={{ height: 0, opacity: 0, marginTop: 0 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="bg-blue-600/5 border border-blue-100 p-4 rounded-2xl flex flex-col md:flex-row items-center gap-4">
+                        <div className="flex items-center gap-2 shrink-0">
+                          <Link2 size={16} className="text-blue-600" />
+                          <span className="text-xs font-black text-gray-700">구글 시트 연동 URL</span>
+                        </div>
+                        <input 
+                          type="password"
+                          value={sheetsApiUrl}
+                          onChange={e => {
+                            setSheetsApiUrl(e.target.value);
+                            localStorage.setItem('google_sheets_url', e.target.value);
+                          }}
+                          placeholder="배포된 웹 앱 URL을 입력하세요 (https://script.google.com/...)"
+                          className="flex-1 p-2 bg-white border border-gray-200 rounded-lg text-[10px] font-medium outline-none focus:border-blue-500 shadow-inner"
+                        />
+                        <button 
+                          onClick={fetchTrainingFromSheets}
+                          className="px-3 py-1.5 bg-blue-600 text-white text-[10px] font-black rounded-lg hover:bg-blue-700 transition-all flex items-center gap-1"
+                        >
+                          <RotateCw size={12} className={cn(isTrainingLoading && "animate-spin")} />
+                          새로고침
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <Card className="p-6 border-dashed border-2 border-gray-200 bg-gray-50/30">
+                <div className="flex items-center gap-2 mb-4">
+                  <Plus size={18} className="text-blue-600" />
+                  <h3 className="text-sm font-black text-gray-900">새 교육 과정 등록 (관리자전용)</h3>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                  <div className="md:col-span-1">
+                    <label className="block text-[10px] font-black text-gray-400 uppercase mb-1">제목</label>
+                    <input 
+                      type="text" 
+                      value={newTraining.title}
+                      onChange={e => setNewTraining(prev => ({ ...prev, title: e.target.value }))}
+                      placeholder="아키텍처 기본" 
+                      className="w-full p-2.5 bg-white border border-gray-200 rounded-xl text-xs font-bold outline-none focus:border-blue-500"
+                    />
+                  </div>
+                  <div className="md:col-span-1">
+                    <label className="block text-[10px] font-black text-gray-400 uppercase mb-1">일시</label>
+                    <input 
+                      type="date" 
+                      value={newTraining.date}
+                      onChange={e => setNewTraining(prev => ({ ...prev, date: e.target.value }))}
+                      className="w-full p-2.5 bg-white border border-gray-200 rounded-xl text-xs font-bold outline-none focus:border-blue-500"
+                    />
+                  </div>
+                  <div className="md:col-span-1">
+                    <label className="block text-[10px] font-black text-gray-400 uppercase mb-1">강사</label>
+                    <input 
+                      type="text" 
+                      value={newTraining.instructor}
+                      onChange={e => setNewTraining(prev => ({ ...prev, instructor: e.target.value }))}
+                      placeholder="강남수 수석" 
+                      className="w-full p-2.5 bg-white border border-gray-200 rounded-xl text-xs font-bold outline-none focus:border-blue-500"
+                    />
+                  </div>
+                  <div className="md:col-span-1">
+                    <label className="block text-[10px] font-black text-gray-400 uppercase mb-1">구분</label>
+                    <select 
+                      value={newTraining.tag}
+                      onChange={e => setNewTraining(prev => ({ ...prev, tag: e.target.value }))}
+                      className="w-full p-2.5 bg-white border border-gray-200 rounded-xl text-xs font-bold outline-none focus:border-blue-500"
+                    >
+                      <option value="일반">일반</option>
+                      <option value="필수">필수</option>
+                      <option value="심화">심화</option>
+                      <option value="전문">전문</option>
+                    </select>
+                  </div>
+                  <div className="md:col-span-1 flex items-end">
+                    <button 
+                      onClick={handleAddTraining}
+                      className="w-full py-2.5 bg-blue-600 text-white text-xs font-black rounded-xl hover:bg-blue-700 transition-all shadow-md shadow-blue-200"
+                    >
+                      추가하기
+                    </button>
                   </div>
                 </div>
               </Card>
-            ))}
+            </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {isTrainingLoading ? (
+                <div className="col-span-3 py-20 flex justify-center">
+                  <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : (
+                <>
+                  {internalTraining.map((edu) => (
+                    <Card key={edu.id} className="hover:shadow-md transition-shadow relative group">
+                      <div className="flex flex-col h-full">
+                        <div className="flex justify-between items-start mb-4">
+                          <span className="px-2 py-1 bg-blue-50 text-blue-600 text-[10px] font-bold rounded uppercase tracking-wider">{edu.tag}</span>
+                          <div className="flex items-center gap-2">
+                            {(role === USER_ROLES.MANAGER || role === USER_ROLES.ADMIN) && (
+                              <button 
+                                onClick={() => handleRemoveTraining(edu.id)}
+                                className="p-1.5 text-gray-300 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100"
+                                title="삭제"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            )}
+                            <GraduationCap size={20} className="text-gray-300" />
+                          </div>
+                        </div>
+                        <h3 className="text-lg font-bold text-gray-900 mb-2">{edu.title || edu.Title || '소속/교육명 없음'}</h3>
+                        <div className="mt-auto pt-4 border-t border-gray-50 flex justify-between items-center">
+                          <div className="text-xs text-gray-500">
+                            <p className="font-bold">{edu.instructor || edu.Instructor || '강사 미지정'}</p>
+                            <p>{edu.date ? (new Date(edu.date).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })) : '일정 미정'}</p>
+                          </div>
+                          <button className="text-xs font-bold text-blue-600 hover:underline">신청하기</button>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                  {internalTraining.length === 0 && (
+                    <div className="col-span-1 md:col-span-3 py-20 flex flex-col items-center justify-center bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
+                      <GraduationCap size={48} className="text-gray-300 mb-4" />
+                      <p className="text-sm font-bold text-gray-400">등록된 교육 과정이 없습니다.</p>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
           </div>
         )}
 
