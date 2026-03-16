@@ -585,34 +585,8 @@ export const Onboarding = ({ user, members, setMembers, addNotification, theme }
 
         {/* EDUCATION TAB (Growth Sub-tab) */}
         {mainTab === 'growth' && subTab === 'edu' && (
-          <div className="lg:col-span-4 grid grid-cols-1 md:grid-cols-3 gap-6">
-            {[
-              { title: 'SW 아키텍처 기본', date: '2026-04-10', instructor: '김철수 책임', tag: '필수' },
-              { title: 'Modern C++ 핵심', date: '2026-04-15', instructor: '이영희 수석', tag: '심화' },
-              { title: 'AUTOSAR 실무', date: '2026-04-22', instructor: '박지성 팀장', tag: '전문' }
-            ].map((edu, idx) => (
-              <Card key={idx} theme={theme} className="hover:shadow-md transition-shadow">
-                <div className="flex flex-col h-full">
-                  <div className="flex justify-between items-start mb-4">
-                    <span className={cn(
-                      "px-2 py-1 text-[10px] font-bold rounded uppercase tracking-wider",
-                      theme === 'dark' ? "bg-blue-900/40 text-blue-400" : "bg-blue-50 text-blue-600"
-                    )}>{edu.tag}</span>
-                    <GraduationCap size={20} className="text-gray-400" />
-                  </div>
-                  <h3 className={cn(
-                    "text-lg font-bold mb-2",
-                    theme === 'dark' ? "text-slate-100" : "text-gray-900"
-                  )}>{edu.title}</h3>
-                  <div className={cn(
-                    "mt-auto pt-4 border-t flex justify-between items-center",
-                    theme === 'dark' ? "border-slate-800" : "border-gray-50"
-                  )}>
-                    <div className="text-xs text-gray-500">
-                      <p className="font-bold">{edu.instructor}</p>
-                      <p>{edu.date}</p>
-                    </div>
-                    <button className="text-xs font-bold text-blue-600 hover:underline">신청하기</button>
+          <>
+
 
           <div className="lg:col-span-4 space-y-6">
             {/* Manager: Config & Add Training UI */}
@@ -761,6 +735,7 @@ export const Onboarding = ({ user, members, setMembers, addNotification, theme }
               )}
             </div>
           </div>
+          </>
         )}
 
         {/* CONFERENCE TAB (Growth Sub-tab) */}
@@ -983,7 +958,8 @@ export const Onboarding = ({ user, members, setMembers, addNotification, theme }
                     </div>
                   </Card>
                 </motion.div>
-                ))})()}
+                ));
+              })()}
             </div>
           </div>
         )}
