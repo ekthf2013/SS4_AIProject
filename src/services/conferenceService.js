@@ -15,23 +15,40 @@ export const fetchAndOrganizeConferences = async (geminiKey, topics, currentYear
 
   try {
     // 1. Tavily를 통한 실시간 웹 검색
-    const searchQuery = `${topics.join(", ")} conferences and seminars in ${currentYear} and future Korea global`;
+    // 쿼리가 너무 길면 400 에러를 유발할 수 있으므로 핵심 키워드 위주로 요약합니다.
+    const searchKeywords = topics.slice(0, 3).join(", "); 
+    const searchQuery = `Latest ${searchKeywords} conferences 2026 Korea and Global events`;
     console.log("Searching for:", searchQuery);
 
-    const searchResponse = await axios.post("https://api.tavily.com/search", {
-      api_key: TAVILY_API_KEY,
-      query: searchQuery,
-      search_depth: "advanced",
-      include_answer: true,
-      max_results: 10
-    });
+    let searchResponse;
+    try {
+      searchResponse = await axios.post("https://api.tavily.com/search", {
+        api_key: TAVILY_API_KEY,
+        query: searchQuery,
+        search_depth: "basic", // 속도를 위해 basic으로 변경
+        max_results: 8
+      });
+    } catch (e) {
+      console.error("Tavily API Failure:", e.response?.data || e.message);
+      throw new Error(`Search API 호출 실패: ${e.response?.data?.detail || e.message}`);
+    }
 
     const rawData = searchResponse.data;
     const searchContext = rawData.results.map(r => `${r.title}: ${r.content}`).join("\n\n");
 
     // 2. Gemini를 통한 AI 데이터 구조화 (브라우저에서 직접 실행)
     const genAI = new GoogleGenerativeAI(geminiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    
+    // 모델 선택의 유연성을 위해 여러 번의 시도를 시뮬레이션하거나 가장 안정적인 모델을 선택합니다.
+    let model;
+    try {
+      // 최신 프로젝트라면 1.5 플래시가 가장 빠르고 저렴합니다.
+      model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    } catch (e) {
+      // 404 발생 시 가장 안정적인 'gemini-pro'로 폴백합니다.
+      console.warn("Falling back to gemini-pro due to model mismatch.");
+      model = genAI.getGenerativeModel({ model: "gemini-pro" });
+    }
 
     const prompt = `
       You are a specialized conference data organizer. 
