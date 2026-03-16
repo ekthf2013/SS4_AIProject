@@ -82,8 +82,7 @@ const MainAppContent = () => {
     {
       category: '지식베이스',
       items: [
-        { id: 'knowledge', icon: BookOpen, label: '자료실' },
-        { id: 'exam', icon: Edit3, label: 'Exam Node' }
+        { id: 'knowledge', icon: BookOpen, label: '자료실' }
       ]
     },
     {
@@ -214,7 +213,6 @@ const MainAppContent = () => {
                   {activeTab === 'dashboard' && <Dashboard />}
                   {activeTab === 'onboarding' && <Onboarding role={user.role} />}
                   {activeTab === 'knowledge' && <KnowledgeBase />}
-                  {activeTab === 'exam' && <div className="p-8"><h1 className="text-2xl font-bold text-gray-800">Exam Node</h1></div>}
                   {activeTab === 'apps' && <Apps user={user} />}
                   {activeTab === 'settings' && <SettingsPage />}
                 </motion.div>

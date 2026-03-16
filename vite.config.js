@@ -6,6 +6,7 @@ import util from 'util';
 
 const execPromise = util.promisify(exec);
 
+// Path-finding and KnowledgeBase Plugin
 function pathFindingPlugin() {
   let restaurants = [
     { id: 1, name: '요미 카츠', cat: 'PREMIUM', dist: '0.4KM', rating: 4.8, addedBy: 'admin', desc: '최상급 등심과 안심을 사용한 프리미엄 수제 돈카츠 전문점.', reviews: [] },
@@ -55,7 +56,6 @@ function pathFindingPlugin() {
               const rest = restaurants.find(r => r.id === id);
               if(rest) {
                 rest.reviews.unshift(review);
-                // recalc rating
                 rest.rating = (rest.reviews.reduce((acc, cur) => acc + cur.rating, 0) / rest.reviews.length).toFixed(1);
                 res.setHeader('Content-Type', 'application/json');
                 res.end(JSON.stringify({ success: true, data: rest }));
@@ -79,84 +79,60 @@ function pathFindingPlugin() {
           return res.end(JSON.stringify({ success: true }));
         }
 
+        // Helper to run NLM Query
+        const runNlmQuery = async (notebookId, question, sourceIds = null) => {
+          let command = `nlm notebook query "${notebookId}" "${question.replace(/"/g, '\\"')}" --profile default --json`;
+          if (sourceIds) command += ` --source-ids "${sourceIds}"`;
+          
+          const { stdout } = await execPromise(command);
+          const parsed = JSON.parse(stdout);
+          if (parsed && parsed.value && parsed.value.answer) {
+            return parsed.value.answer;
+          }
+          throw new Error('Invalid NLM response');
+        };
+
         // Chat Guide API
         if (req.url === '/api/chat-guide' && req.method === 'POST') {
           let body = '';
-          req.on('data', chunk => {
-            body += chunk.toString();
-          });
+          req.on('data', chunk => { body += chunk.toString(); });
           req.on('end', async () => {
              res.setHeader('Content-Type', 'application/json');
              try {
                 const { message, notebookUrl } = JSON.parse(body);
-                const pyScript = 'C:\\Users\\User\\Desktop\\Test_Skiils\\skills\\notebooklm\\scripts\\ask_question.py';
-                const command = `python -X utf8 "${pyScript}" --question "${message.replace(/"/g, '\\"')}" --notebook-url "${notebookUrl}"`;
-                console.log(`Executing Chat Guide: ${command}`);
-
-                const { stdout, stderr } = await execPromise(command, {
-                   env: { ...process.env, PYTHONIOENCODING: 'utf-8' }
-                });
-
-                if (stderr) {
-                   console.error('Python Stderr:', stderr);
-                }
-
-                // Extracting just the answer parts
-                const parts = stdout.split('============================================================');
-                if (parts.length >= 3) {
-                   return res.end(JSON.stringify({ success: true, answer: parts[2].trim() }));
-                } else {
-                   return res.end(JSON.stringify({ success: false, error: 'Unexpected output format: ' + stdout }));
-                }
-
+                const notebookId = notebookUrl.split('/').pop().split('?')[0];
+                const answer = await runNlmQuery(notebookId, message);
+                return res.end(JSON.stringify({ success: true, answer }));
              } catch (error) {
-                console.error('Exec error:', error);
                 return res.end(JSON.stringify({ success: false, error: error.message }));
              }
           });
           return;
         }
 
-         // Generate Exam API
+        // Generate Exam API
         if (req.url === '/api/generate-exam' && req.method === 'POST') {
           let body = '';
           req.on('data', chunk => { body += chunk.toString(); });
           req.on('end', async () => {
              res.setHeader('Content-Type', 'application/json');
              try {
-                const { notebookUrl } = JSON.parse(body);
-                const pyScript = 'C:\\Users\\User\\Desktop\\Test_Skiils\\skills\\notebooklm\\scripts\\ask_question.py';
-                const prompt = `이 노트북의 내용을 바탕으로 전문가 수준의 4지선다형 객관식 시험 문제 최대 10개를 내줘. 포맷은 반드시 아래와 같은 JSON 배열만 출력해, 추가 설명 필요 없고 형식만 줘: [{"question": "문제", "options": ["보기1", "보기2", "보기3", "보기4"], "answer": 0}]`;
-                const command = `python -X utf8 "${pyScript}" --question "${prompt.replace(/"/g, '\\"')}" --notebook-url "${notebookUrl}"`;
-                console.log(`Executing Generate Exam: python ask_question.py`);
-
-                const { stdout, stderr } = await execPromise(command, {
-                   env: { ...process.env, PYTHONIOENCODING: 'utf-8' },
-                   maxBuffer: 1024 * 1024 * 5 // 5MB limit
-                });
-
-                if (stderr) console.error('Python Stderr:', stderr);
-
-                const parts = stdout.split('============================================================');
-                if (parts.length >= 3) {
-                   const answerText = parts[2].trim();
-                   // Clean up footnote injected tags just in case
-                   let cleanText = answerText.replace(/EXTREMELY IMPORTANT:[\s\S]*/, '');
-                   
-                   // Try to extract JSON array
-                   const jsonMatch = cleanText.match(/\[[\s\S]*\]/);
-                   if(jsonMatch) {
-                      const parsed = JSON.parse(jsonMatch[0]);
-                      return res.end(JSON.stringify({ success: true, data: parsed }));
-                   } else {
-                      return res.end(JSON.stringify({ success: false, error: 'Failed to extract JSON from answer: ' + cleanText }));
-                   }
-                } else {
-                   return res.end(JSON.stringify({ success: false, error: 'Unexpected output format: ' + stdout }));
+                const { notebookUrl, docTitle } = JSON.parse(body);
+                const notebookId = notebookUrl.split('/').pop().split('?')[0];
+                let prompt = `이 노트북의 내용을 바탕으로 전문가 수준의 4지선다형 객관식 시험 문제 최대 10개를 내줘. 포맷은 반드시 아래와 같은 JSON 배열만 출력해, 추가 설명 필요 없고 형식만 줘: [{"question": "문제", "options": ["보기1", "보기2", "보기3", "보기4"], "answer": 0}]`;
+                
+                if (docTitle) {
+                   const cleanTitle = docTitle.replace(/\[.*?\]/g, '').replace(/\.(pdf|pptx|docx|txt)$/i, '').trim();
+                   prompt = `노트북 소스 중 "${cleanTitle}" 관련 문서의 내용을 바탕으로 전문가 수준의 4지선다형 객관식 시험 문제 최대 10개를 내줘. 포맷은 반드시 아래와 같은 JSON 배열만 출력해, 추가 설명 필요 없고 형식만 줘: [{"question": "문제", "options": ["보기1", "보기2", "보기3", "보기4"], "answer": 0}]`;
                 }
 
+                const answer = await runNlmQuery(notebookId, prompt);
+                const jsonMatch = answer.match(/\[[\s\S]*\]/);
+                if(jsonMatch) {
+                   return res.end(JSON.stringify({ success: true, data: JSON.parse(jsonMatch[0]) }));
+                }
+                return res.end(JSON.stringify({ success: false, error: 'Failed to parse quiz' }));
              } catch (error) {
-                console.error('Exec error:', error);
                 return res.end(JSON.stringify({ success: false, error: error.message }));
              }
           });
@@ -171,22 +147,34 @@ function pathFindingPlugin() {
              res.setHeader('Content-Type', 'application/json');
              try {
                 const { notebookId } = JSON.parse(body);
-                if(!notebookId) {
-                   return res.end(JSON.stringify({ success: false, error: 'notebookId is required' }));
-                }
-
-                console.log(`Executing List Sources for notebook: ${notebookId}`);
-                const command = `nlm source list ${notebookId}`;
-                const { stdout, stderr } = await execPromise(command);
-
-                if(stderr) {
-                  console.error('NLM Stderr:', stderr);
-                }
-
-                const parsed = JSON.parse(stdout);
-                return res.end(JSON.stringify({ success: true, data: parsed }));
+                const { stdout } = await execPromise(`nlm source list "${notebookId}" --profile default --json`);
+                return res.end(JSON.stringify({ success: true, data: JSON.parse(stdout) }));
              } catch (error) {
-                console.error('Exec error:', error);
+                return res.end(JSON.stringify({ success: false, error: error.message }));
+             }
+          });
+          return;
+        }
+
+        // Summarize Doc API
+        if (req.url === '/api/summarize-doc' && req.method === 'POST') {
+          let body = '';
+          req.on('data', chunk => { body += chunk.toString(); });
+          req.on('end', async () => {
+             res.setHeader('Content-Type', 'application/json');
+             try {
+                const { notebookUrl, docTitle } = JSON.parse(body);
+                const notebookId = notebookUrl.split('/').pop().split('?')[0];
+                const cleanTitle = docTitle.replace(/\[.*?\]/g, '').replace(/\.(pdf|pptx|docx|txt)$/i, '').trim();
+                const prompt = `노트북 소스 중 "${cleanTitle}" 관련 문서의 핵심 내용을 찾아서 3~4줄 내외로 정중하게 요약해 줘.`;
+                const answer = await runNlmQuery(notebookId, prompt);
+                const cleanAnswer = answer
+                   .replace(/\[\d[\d\s\-,]*\]/g, '') // Remove citations like [1], [1, 2], [1-3]
+                   .replace(/\*\*/g, '') // Remove bold markers
+                   .replace(/EXTREMELY IMPORTANT:[\s\S]*/g, '') // Remove system footer
+                   .trim();
+                return res.end(JSON.stringify({ success: true, answer: cleanAnswer }));
+             } catch (error) {
                 return res.end(JSON.stringify({ success: false, error: error.message }));
              }
           });
@@ -196,36 +184,21 @@ function pathFindingPlugin() {
         // Path Finding API
         if (req.url === '/api/path-finding' && req.method === 'POST') {
           let body = '';
-          req.on('data', chunk => {
-            body += chunk.toString();
-          });
+          req.on('data', chunk => { body += chunk.toString(); });
           req.on('end', async () => {
+            res.setHeader('Content-Type', 'application/json');
             try {
               const { departure, destination } = JSON.parse(body);
-              const question = `출발지는 ${departure}이고 목적지는 ${destination}입니다. 통근 경로를 다음 형식으로 묶어서 답변해주세요.\n추천 노선 : [내용]\n탑승 시간 : [내용]\n탑승 위치 : [내용]\n(각주나 1 같은 숫자, 부가 설명은 절대 생략하고 딱 이 내용만 주세요)`;
-              const safeQuestion = question.replace(/"/g, '\\"');
-              const pyScript = 'C:\\Users\\User\\Desktop\\Test_Skiils\\skills\\notebooklm\\scripts\\ask_question.py';
-              
-              const { stdout, stderr } = await execPromise(`python -X utf8 "${pyScript}" --question "${safeQuestion}"`, {
-                env: { ...process.env, PYTHONIOENCODING: 'utf-8' }
-              });
-              
-              let finalAnswer = stdout;
-              const separator = '============================================================';
-              const parts = stdout.split(separator);
-              if (parts.length >= 4) {
-                finalAnswer = parts[2].trim();
-              } else {
-                finalAnswer = stdout; // fallback
-              }
-              
-              res.setHeader('Content-Type', 'application/json');
-              res.end(JSON.stringify({ success: true, answer: finalAnswer }));
+              const notebookId = "de6dee15-ad68-486b-b9f3-80d6ab7d5def"; // New wayfinding notebook ID
+              const question = `출발지는 ${departure}이고 목적지는 ${destination}입니다. 통근 경로를 다음 형식에 맞춰서 답변해줘. (각주 [1], [2] 같은 숫자는 절대 포함하지 마)\n\n[탑승버스] : [내용]\n[탑승위치] : [내용]\n[이용요금] : [내용]\n[버스 운행 시간표] : (정류장별/호차별 상세 시간표)`;
+              const answer = await runNlmQuery(notebookId, question);
+              const cleanAnswer = answer
+                .replace(/\[\d[\d\s\-,]*\]/g, '') // Remove citations like [1], [1, 2], [1-3]
+                .replace(/EXTREMELY IMPORTANT:[\s\S]*/g, '') 
+                .trim();
+              return res.end(JSON.stringify({ success: true, answer: cleanAnswer }));
             } catch (error) {
-              console.error(error);
-              res.statusCode = 500;
-              res.setHeader('Content-Type', 'application/json');
-              res.end(JSON.stringify({ success: false, error: String(error) }));
+              return res.end(JSON.stringify({ success: false, error: error.message }));
             }
           });
           return;
@@ -236,11 +209,6 @@ function pathFindingPlugin() {
   };
 }
 
-// https://vite.dev/config/
 export default defineConfig({
-  plugins: [
-    react(),
-    tailwindcss(),
-    pathFindingPlugin(),
-  ],
+  plugins: [react(), tailwindcss(), pathFindingPlugin()],
 })

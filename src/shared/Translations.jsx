@@ -59,6 +59,8 @@ export const TRANSLATIONS = {
     ret_vault: "돌아가기",
     fin_analysis: "분석 완료",
     select_doc: "적어도 하나의 문서를 선택하세요",
+    tab_vault: "지식 데이터",
+    tab_exam: "퀴즈",
 
     // Apps
     team_apps: "애플리케이션",
@@ -159,6 +161,8 @@ export const TRANSLATIONS = {
     ret_vault: "Return to Vault",
     fin_analysis: "Finish Analysis",
     select_doc: "SELECT AT LEAST ONE DOCUMENT",
+    tab_vault: "Knowledge Data",
+    tab_exam: "Quiz",
 
     // Apps
     team_apps: "Team Applications",
