@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { ShieldCheck } from 'lucide-react';
 import { useTranslation } from '../shared/Translations';
 import { SectionHeader } from '../shared/SharedComponents';
+import { USER_ACCOUNTS } from '../shared/MockData';
 
 export const LoginView = ({ onLogin }) => {
   const { t } = useTranslation();
@@ -11,8 +12,10 @@ export const LoginView = ({ onLogin }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if ((userId === 'admin' || userId === 'manager') && password === '1234') {
-      onLogin(userId);
+    const foundUser = USER_ACCOUNTS.find(acc => acc.id === userId.toLowerCase() && acc.pw === password);
+    
+    if (foundUser) {
+      onLogin(foundUser);
     } else {
       alert('아이디 또는 비밀번호가 올바르지 않습니다.');
     }
