@@ -5,7 +5,7 @@ import { useTranslation } from '../shared/Translations';
 import { PremiumPage, SectionHeader, Card } from '../shared/SharedComponents';
 import { cn } from '../shared/utils';
 
-export const Apps = ({ user }) => {
+export const Apps = ({ user, addNotification, theme }) => {
   const { t } = useTranslation();
   const [appTab, setAppTab] = useState('welfare');
   const [voteCount, setVoteCount] = useState({ hotpot: 12, bbq: 28, pasta: 8 });
@@ -41,6 +41,7 @@ export const Apps = ({ user }) => {
     const data = await res.json();
     if (data.success) {
       setRestaurants(prev => [...prev, data.data]);
+      addNotification(`[식당 추천] 신규 식당 "${newShopName}"이 등록되었습니다!`);
       setNewShopName('');
       setNewShopDesc('');
       setNewShopRating('5.0');
@@ -79,19 +80,23 @@ export const Apps = ({ user }) => {
     }
   };
 
-  const handleVote = (key) => {
+  const handleVote = (key, label) => {
     if (hasVoted) return;
     setVoteCount(prev => ({ ...prev, [key]: prev[key] + 1 }));
     setHasVoted(true);
+    addNotification(`[투표] "${label || key}" 메뉴에 투표하셨습니다.`);
   };
 
   const totalVotes = Object.values(voteCount).reduce((a, b) => a + b, 0);
 
   return (
-    <PremiumPage>
+    <PremiumPage theme={theme}>
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
-        <SectionHeader title={t('team_apps')} subtitle={t('apps_sub')} />
-        <div className="flex bg-white rounded-2xl p-1.5 gap-1 border border-gray-200 shadow-sm">
+        <SectionHeader title={t('team_apps')} subtitle={t('apps_sub')} theme={theme} />
+        <div className={cn(
+          "flex rounded-2xl p-1.5 gap-1 border shadow-sm transition-colors duration-500",
+          theme === 'dark' ? "bg-slate-800 border-slate-700" : "bg-white border-gray-200"
+        )}>
           {['welfare', 'voting'].map(tab => (
             <button
               key={tab}
@@ -109,16 +114,25 @@ export const Apps = ({ user }) => {
 
       {appTab === 'welfare' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
-          <Card title={t('gourmet_portal')} className="space-y-6 bg-white border border-gray-200 shadow-sm">
+          <Card title={t('gourmet_portal')} theme={theme} className="space-y-6">
             <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2">
               {restaurants.map((shop) => (
-                <div key={shop.id} onClick={() => setSelectedShop(shop)} className="cursor-pointer bg-gray-50 border border-gray-100 p-4 rounded-2xl flex items-center gap-4 hover:shadow-md transition-shadow">
-                  <div className="w-12 h-12 rounded-xl bg-orange-50 flex items-center justify-center text-orange-500 border border-orange-100">
+                <div key={shop.id} onClick={() => setSelectedShop(shop)} className={cn(
+                  "cursor-pointer p-4 rounded-2xl flex items-center gap-4 transition-all duration-300",
+                  theme === 'dark' ? "bg-slate-800/50 border border-slate-700 hover:border-slate-500" : "bg-gray-50 border border-gray-100 hover:shadow-md"
+                )}>
+                  <div className={cn(
+                    "w-12 h-12 rounded-xl flex items-center justify-center border transition-colors",
+                    theme === 'dark' ? "bg-orange-900/20 text-orange-400 border-orange-800/50" : "bg-orange-50 text-orange-500 border-orange-100"
+                  )}>
                     <Utensils size={24} />
                   </div>
                   <div className="flex-1">
                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{shop.cat}</p>
-                    <p className="text-sm font-bold text-gray-900 mt-0.5">{shop.name}</p>
+                    <p className={cn(
+                      "text-sm font-bold mt-0.5",
+                      theme === 'dark' ? "text-slate-100" : "text-gray-900"
+                    )}>{shop.name}</p>
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-bold text-yellow-500">★{shop.rating}</p>
@@ -126,10 +140,19 @@ export const Apps = ({ user }) => {
                 </div>
               ))}
             </div>
-            <div className="pt-5 border-t border-gray-100 space-y-3">
-              <input value={newShopName} onChange={e => setNewShopName(e.target.value)} placeholder="새 식당 이름..." className="w-full bg-white border border-gray-200 rounded-xl p-3 text-sm font-bold text-gray-900 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder-gray-400" />
+            <div className={cn(
+              "pt-5 border-t space-y-3",
+              theme === 'dark' ? "border-slate-800" : "border-gray-100"
+            )}>
+              <input value={newShopName} onChange={e => setNewShopName(e.target.value)} placeholder="새 식당 이름..." className={cn(
+                "w-full rounded-xl p-3 text-sm font-bold outline-none ring-offset-0 focus:ring-1 focus:ring-blue-500 transition-all placeholder-gray-400 transition-colors duration-500 border",
+                theme === 'dark' ? "bg-slate-900 border-slate-700 text-slate-100 focus:border-blue-500" : "bg-white border-gray-200 text-gray-900"
+              )} />
               <div className="flex gap-2">
-                <select value={newShopRating} onChange={e => setNewShopRating(e.target.value)} className="w-20 bg-white border border-gray-200 rounded-xl p-3 text-sm font-bold text-gray-900 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all appearance-none text-center">
+                <select value={newShopRating} onChange={e => setNewShopRating(e.target.value)} className={cn(
+                  "w-20 rounded-xl p-3 text-sm font-bold outline-none ring-offset-0 focus:ring-1 focus:ring-blue-500 transition-all appearance-none text-center border transition-colors duration-500",
+                  theme === 'dark' ? "bg-slate-900 border-slate-700 text-slate-100 focus:border-blue-500" : "bg-white border-gray-200 text-gray-900"
+                )}>
                   <option value="5.0">5.0</option>
                   <option value="4.5">4.5</option>
                   <option value="4.0">4.0</option>
@@ -140,22 +163,33 @@ export const Apps = ({ user }) => {
                   <option value="1.5">1.5</option>
                   <option value="1.0">1.0</option>
                 </select>
-                <input value={newShopDesc} onChange={e => setNewShopDesc(e.target.value)} placeholder="간단한 설명..." className="flex-1 bg-white border border-gray-200 rounded-xl p-3 text-sm font-bold text-gray-900 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder-gray-400" />
+                <input value={newShopDesc} onChange={e => setNewShopDesc(e.target.value)} placeholder="간단한 설명..." className={cn(
+                  "flex-1 rounded-xl p-3 text-sm font-bold outline-none ring-offset-0 focus:ring-1 focus:ring-blue-500 transition-all placeholder-gray-400 transition-colors duration-500 border",
+                  theme === 'dark' ? "bg-slate-900 border-slate-700 text-slate-100 focus:border-blue-500" : "bg-white border-gray-200 text-gray-900"
+                )} />
               </div>
               <button onClick={handleAddRestaurant} disabled={!newShopName} className="w-full py-3.5 bg-blue-600 disabled:bg-gray-200 disabled:text-gray-400 hover:bg-blue-700 rounded-xl font-bold tracking-widest text-white transition-colors shadow-sm">+ 추가하기</button>
             </div>
           </Card>
 
-          <Card title={t('wayfinding')} className="relative group lg:col-span-1 bg-white border border-gray-200 shadow-sm">
+          <Card title={t('wayfinding')} theme={theme} className="relative group lg:col-span-1">
             <div className="space-y-6">
-              <div className="flex bg-gray-100 rounded-xl p-1 gap-1 border border-gray-200">
+              <div className={cn(
+                "flex rounded-xl p-1 gap-1 border transition-colors duration-500",
+                theme === 'dark' ? "bg-slate-800 border-slate-700" : "bg-gray-100 border-gray-200"
+              )}>
                 <button 
                   onClick={() => {
                     setCommuteMode('toWork');
                     setDestination('회사');
                     setDeparture('');
                   }}
-                  className={cn("flex-1 py-2 rounded-lg text-xs font-bold transition-all text-center", commuteMode === 'toWork' ? "bg-white text-blue-600 shadow-sm" : "text-gray-500")}
+                  className={cn(
+                    "flex-1 py-2 rounded-lg text-xs font-bold transition-all text-center", 
+                    commuteMode === 'toWork' 
+                      ? (theme === 'dark' ? "bg-slate-700 text-blue-400 shadow-sm" : "bg-white text-blue-600 shadow-sm") 
+                      : (theme === 'dark' ? "text-slate-500 hover:text-slate-300" : "text-gray-500")
+                  )}
                 >
                   출근
                 </button>
@@ -165,7 +199,12 @@ export const Apps = ({ user }) => {
                     setDeparture('회사');
                     setDestination('');
                   }}
-                  className={cn("flex-1 py-2 rounded-lg text-xs font-bold transition-all text-center", commuteMode === 'toHome' ? "bg-white text-blue-600 shadow-sm" : "text-gray-500")}
+                  className={cn(
+                    "flex-1 py-2 rounded-lg text-xs font-bold transition-all text-center", 
+                    commuteMode === 'toHome' 
+                      ? (theme === 'dark' ? "bg-slate-700 text-blue-400 shadow-sm" : "bg-white text-blue-600 shadow-sm") 
+                      : (theme === 'dark' ? "text-slate-500 hover:text-slate-300" : "text-gray-500")
+                  )}
                 >
                   퇴근
                 </button>
@@ -181,8 +220,10 @@ export const Apps = ({ user }) => {
                     onChange={(e) => setDeparture(e.target.value)}
                     placeholder="출발지를 입력하세요."
                     className={cn(
-                      "w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-sm font-bold outline-none focus:ring-1 transition-all placeholder-gray-400",
-                      commuteMode === 'toHome' ? "opacity-60 cursor-not-allowed bg-gray-100" : "text-gray-900 focus:border-blue-500 focus:bg-white focus:ring-blue-500"
+                      "w-full border rounded-xl p-4 text-sm font-bold outline-none ring-offset-0 focus:ring-1 transition-all placeholder-gray-400 border transition-colors duration-500",
+                      commuteMode === 'toHome' 
+                        ? (theme === 'dark' ? "bg-slate-900/50 border-slate-800 text-slate-600" : "bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed") 
+                        : (theme === 'dark' ? "bg-slate-900 border-slate-700 text-slate-100 focus:border-blue-500 focus:ring-blue-500" : "bg-gray-50 border-gray-200 text-gray-900 focus:border-blue-500 focus:bg-white focus:ring-blue-500")
                     )}
                   />
                 </div>
@@ -195,8 +236,10 @@ export const Apps = ({ user }) => {
                     onChange={(e) => setDestination(e.target.value)}
                     placeholder="목적지를 입력하세요."
                     className={cn(
-                      "w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-sm font-bold outline-none focus:ring-1 transition-all placeholder-gray-400",
-                      commuteMode === 'toWork' ? "opacity-60 cursor-not-allowed bg-gray-100" : "text-gray-900 focus:border-blue-500 focus:bg-white focus:ring-blue-500"
+                      "w-full border rounded-xl p-4 text-sm font-bold outline-none ring-offset-0 focus:ring-1 transition-all placeholder-gray-400 border transition-colors duration-500",
+                      commuteMode === 'toWork' 
+                        ? (theme === 'dark' ? "bg-slate-900/50 border-slate-800 text-slate-600" : "bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed") 
+                        : (theme === 'dark' ? "bg-slate-900 border-slate-700 text-slate-100 focus:border-blue-500 focus:ring-blue-500" : "bg-gray-50 border-gray-200 text-gray-900 focus:border-blue-500 focus:bg-white focus:ring-blue-500")
                     )}
                   />
                 </div>
@@ -228,10 +271,16 @@ export const Apps = ({ user }) => {
                             initial={{ opacity: 0, scale: 0.98 }}
                             animate={{ opacity: 1, scale: 1 }}
                             transition={{ delay: i * 0.1 }}
-                            className="bg-white rounded-2xl p-6 border-2 border-gray-100 shadow-sm space-y-5 hover:border-blue-300 transition-all group relative overflow-hidden mb-4"
+                            className={cn(
+                              "rounded-2xl p-6 border-2 shadow-sm space-y-5 hover:border-blue-300 transition-all group relative overflow-hidden mb-4",
+                              theme === 'dark' ? "bg-slate-800/50 border-slate-700" : "bg-white border-gray-100"
+                            )}
                           >
                             <div className="absolute top-0 left-0 w-1.5 h-full bg-blue-600" />
-                            <h4 className="text-lg font-black text-gray-900 leading-tight">
+                            <h4 className={cn(
+                              "text-lg font-black leading-tight",
+                              theme === 'dark' ? "text-slate-100" : "text-gray-900"
+                            )}>
                               {route.title || '추천 경로'}
                             </h4>
                             
@@ -244,10 +293,16 @@ export const Apps = ({ user }) => {
 
                                 return (
                                   <div key={si} className="flex items-start gap-4 relative">
-                                    <div className="p-2 bg-gray-50 rounded-lg shrink-0">
+                                    <div className={cn(
+                                      "p-2 rounded-lg shrink-0",
+                                      theme === 'dark' ? "bg-slate-900" : "bg-gray-50"
+                                    )}>
                                       <Icon size={14} className="text-gray-500" />
                                     </div>
-                                    <p className="text-sm font-bold text-gray-700 leading-relaxed pt-1 flex-1">{step}</p>
+                                    <p className={cn(
+                                      "text-sm font-bold leading-relaxed pt-1 flex-1",
+                                      theme === 'dark' ? "text-slate-300" : "text-gray-700"
+                                    )}>{step}</p>
                                     {si < route.steps.length - 1 && (
                                       <div className="absolute left-[17px] top-[34px] w-[2px] h-[30px] bg-gray-100" />
                                     )}
@@ -276,14 +331,23 @@ export const Apps = ({ user }) => {
           </Card>
 
 
-          <Card title={t('corp_codex')} className="space-y-3 bg-white border border-gray-200 shadow-sm">
+          <Card title={t('corp_codex')} theme={theme} className="space-y-3">
             {['Welfare Policy v2.4', 'Security Protocol 2026', 'Code of Conduct'].map((item, i) => (
-              <button key={i} className="w-full flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 border border-gray-100 transition-colors">
+              <button key={i} className={cn(
+                "w-full flex items-center justify-between p-4 rounded-xl border transition-all",
+                theme === 'dark' ? "bg-slate-800/50 hover:bg-slate-700 border-slate-700 hover:border-slate-500" : "bg-gray-50 rounded-xl hover:bg-gray-100 border border-gray-100"
+              )}>
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-white rounded-lg shadow-sm">
+                  <div className={cn(
+                    "p-2 rounded-lg shadow-sm",
+                    theme === 'dark' ? "bg-slate-900" : "bg-white"
+                  )}>
                     <FileText className="text-blue-600" size={16} />
                   </div>
-                  <span className="text-xs font-bold text-gray-700 tracking-wider">
+                  <span className={cn(
+                    "text-xs font-bold tracking-wider",
+                    theme === 'dark' ? "text-slate-300" : "text-gray-700"
+                  )}>
                      {item}
                   </span>
                 </div>
@@ -295,10 +359,13 @@ export const Apps = ({ user }) => {
       )}
 
       {appTab === 'voting' && (
-        <Card title={t('dining_vote')} className="bg-white border border-gray-200 shadow-sm">
+        <Card title={t('dining_vote')} theme={theme}>
           <div className="space-y-12 py-8">
             <div className="text-center">
-              <h3 className="text-3xl font-black text-gray-900 mb-3">{t('vote_q')}</h3>
+              <h3 className={cn(
+                "text-3xl font-black mb-3 transition-colors duration-500",
+                theme === 'dark' ? "text-slate-100" : "text-gray-900"
+              )}>{t('vote_q')}</h3>
               <p className="text-xs font-bold text-gray-500 tracking-widest uppercase">{t('vote_active')}</p>
             </div>
 
@@ -308,10 +375,16 @@ export const Apps = ({ user }) => {
                 return (
                   <div key={key} className="space-y-3">
                     <div className="flex justify-between items-end">
-                      <span className="text-lg font-bold text-gray-900 uppercase">{key}</span>
+                      <span className={cn(
+                        "text-lg font-bold uppercase transition-colors duration-500",
+                        theme === 'dark' ? "text-slate-200" : "text-gray-900"
+                      )}>{key}</span>
                       <span className="text-sm font-bold text-gray-500">{percentage}% ({count})</span>
                     </div>
-                    <div className="relative h-4 bg-gray-100 rounded-full overflow-hidden cursor-pointer group hover:bg-gray-200 transition-colors" onClick={() => handleVote(key)}>
+                    <div className={cn(
+                      "relative h-4 rounded-full overflow-hidden cursor-pointer group transition-colors",
+                      theme === 'dark' ? "bg-slate-800 hover:bg-slate-700" : "bg-gray-100 hover:bg-gray-200"
+                    )} onClick={() => handleVote(key, key)}>
                       <motion.div
                         initial={{ width: 0 }}
                         animate={{ width: `${percentage}%` }}
@@ -336,13 +409,30 @@ export const Apps = ({ user }) => {
       <AnimatePresence>
         {selectedShop && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/40 backdrop-blur-sm p-4">
-            <motion.div initial={{ scale: 0.95, y: 10 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 10 }} className="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-8 space-y-6 relative border border-gray-100">
-              <button onClick={() => setSelectedShop(null)} className="absolute top-5 right-5 text-gray-400 hover:text-gray-900 transition-colors bg-gray-50 hover:bg-gray-100 p-2 rounded-full"><X size={20} /></button>
+            <motion.div initial={{ scale: 0.95, y: 10 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 10 }} className={cn(
+              "rounded-3xl shadow-2xl max-w-sm w-full p-8 space-y-6 relative border transition-colors duration-500",
+              theme === 'dark' ? "bg-slate-900 border-slate-800" : "bg-white border-gray-100"
+            )}>
+              <button 
+                onClick={() => setSelectedShop(null)} 
+                className={cn(
+                  "absolute top-5 right-5 transition-colors p-2 rounded-full",
+                  theme === 'dark' ? "text-slate-500 hover:text-slate-200 bg-slate-800 hover:bg-slate-700" : "text-gray-400 hover:text-gray-900 bg-gray-50 hover:bg-gray-100"
+                )}
+              >
+                <X size={20} />
+              </button>
 
               <div className="flex items-center gap-5">
-                <div className="w-16 h-16 rounded-2xl bg-orange-50 flex items-center justify-center text-orange-500 border border-orange-100"><Utensils size={32} /></div>
+                <div className={cn(
+                  "w-16 h-16 rounded-2xl flex items-center justify-center border transition-colors",
+                  theme === 'dark' ? "bg-orange-900/20 text-orange-400 border-orange-800/50" : "bg-orange-50 text-orange-500 border-orange-100"
+                )}><Utensils size={32} /></div>
                 <div>
-                  <h3 className="text-2xl font-black text-gray-900 mb-1">{selectedShop.name}</h3>
+                  <h3 className={cn(
+                    "text-2xl font-black mb-1",
+                    theme === 'dark' ? "text-slate-100" : "text-gray-900"
+                  )}>{selectedShop.name}</h3>
                   <p className="text-xs font-bold text-gray-500 tracking-widest uppercase">
                     <span className="text-blue-600">{selectedShop.cat}</span> &bull; ★{selectedShop.rating}
                     {selectedShop.addedBy ? ` \u2022 By ${selectedShop.addedBy}` : ''}
@@ -350,21 +440,36 @@ export const Apps = ({ user }) => {
                 </div>
               </div>
 
-              <p className="text-sm font-medium text-gray-600 leading-relaxed bg-gray-50 p-4 rounded-2xl border border-gray-100">{selectedShop.desc || '상세 정보가 없습니다.'}</p>
+              <p className={cn(
+                "text-sm font-medium leading-relaxed p-4 rounded-2xl border transition-colors duration-500",
+                theme === 'dark' ? "bg-slate-800/50 border-slate-800 text-slate-300" : "bg-gray-50 border-gray-100 text-gray-600"
+              )}>{selectedShop.desc || '상세 정보가 없습니다.'}</p>
 
-              <div className="space-y-5 pt-6 border-t border-gray-100">
+              <div className={cn(
+                "space-y-5 pt-6 border-t",
+                theme === 'dark' ? "border-slate-800" : "border-gray-100"
+              )}>
                 <h4 className="text-xs font-bold text-gray-500 uppercase tracking-widest">Reviews</h4>
                 <div className="max-h-40 overflow-y-auto space-y-3 pr-2">
                   {selectedShop.reviews?.map((rv, i) => (
-                    <div key={i} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                    <div key={i} className={cn(
+                      "p-4 rounded-xl border shadow-sm transition-colors duration-500",
+                      theme === 'dark' ? "bg-slate-800 border-slate-700" : "bg-white border-gray-200"
+                    )}>
                       <p className="text-[10px] font-bold text-gray-400 mb-1.5 tracking-wider">{rv.user} <span className="text-yellow-500">★{rv.rating}</span></p>
-                      <p className="text-sm text-gray-800 font-medium">{rv.comment}</p>
+                      <p className={cn(
+                        "text-sm font-medium",
+                        theme === 'dark' ? "text-slate-200" : "text-gray-800"
+                      )}>{rv.comment}</p>
                     </div>
                   ))}
                   {(!selectedShop.reviews || selectedShop.reviews.length === 0) && <p className="text-sm text-gray-500 font-medium text-center py-4 bg-gray-50 rounded-xl">리뷰가 없습니다.</p>}
                 </div>
                 <div className="flex gap-2">
-                  <select id="revRating" defaultValue="5.0" className="w-20 bg-white border border-gray-300 rounded-xl p-3 text-sm font-bold text-gray-900 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors appearance-none text-center">
+                  <select id="revRating" defaultValue="5.0" className={cn(
+                    "w-20 rounded-xl p-3 text-sm font-bold outline-none ring-offset-0 focus:ring-1 focus:ring-blue-500 transition-all appearance-none text-center border transition-colors duration-500",
+                    theme === 'dark' ? "bg-slate-900 border-slate-700 text-slate-100 focus:border-blue-500" : "bg-white border-gray-300 text-gray-900"
+                  )}>
                     <option value="5.0">5.0</option>
                     <option value="4.5">4.5</option>
                     <option value="4.0">4.0</option>
@@ -375,7 +480,10 @@ export const Apps = ({ user }) => {
                     <option value="1.5">1.5</option>
                     <option value="1.0">1.0</option>
                   </select>
-                  <input type="text" id="revComment" placeholder="리뷰 작성..." className="flex-1 bg-white border border-gray-300 rounded-xl p-3 text-sm font-bold text-gray-900 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors placeholder-gray-400" />
+                  <input type="text" id="revComment" placeholder="리뷰 작성..." className={cn(
+                    "flex-1 rounded-xl p-3 text-sm font-bold outline-none ring-offset-0 focus:ring-1 focus:ring-blue-500 transition-all placeholder-gray-400 transition-colors duration-500 border",
+                    theme === 'dark' ? "bg-slate-900 border-slate-700 text-slate-100 focus:border-blue-500" : "bg-white border-gray-300 text-gray-900"
+                  )} />
                   <button onClick={async () => {
                     const rating = parseFloat(document.getElementById('revRating').value);
                     const comment = document.getElementById('revComment').value;
