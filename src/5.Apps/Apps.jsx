@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Utensils, MapPin, FileText, ChevronRight, X, Trash2 } from 'lucide-react';
+import { Utensils, MapPin, FileText, ChevronRight, X, Trash2, Train, Bus, Footprints } from 'lucide-react';
 import { useTranslation } from '../shared/Translations';
 import { PremiumPage, SectionHeader, Card } from '../shared/SharedComponents';
 import { cn } from '../shared/utils';
@@ -11,7 +11,8 @@ export const Apps = ({ user }) => {
   const [voteCount, setVoteCount] = useState({ hotpot: 12, bbq: 28, pasta: 8 });
   const [hasVoted, setHasVoted] = useState(false);
   const [departure, setDeparture] = useState('');
-  const [destination, setDestination] = useState('');
+  const [destination, setDestination] = useState('회사');
+  const [commuteMode, setCommuteMode] = useState('toWork'); // 'toWork' or 'toHome'
   const [path, setPath] = useState(null);
 
   const [restaurants, setRestaurants] = useState([]);
@@ -67,29 +68,9 @@ export const Apps = ({ user }) => {
       });
       const data = await res.json();
       if (data.success) {
-        let answerText = data.answer || '';
-
-        // Remove python script's appended follow-up reminder
-        const reminderIndex = answerText.indexOf("EXTREMELY IMPORTANT: Is that ALL you need to know?");
-        if (reminderIndex !== -1) {
-          answerText = answerText.substring(0, reminderIndex);
-        }
-
-        // Clean up NotebookLM footnotes and orphaned punctuation
-        answerText = answerText.replace(/\n\s*\d+\s*\n/g, '\n'); // remove lines that are just numbers between newlines
-        answerText = answerText.replace(/\n\s*([.,])\s*/g, '$1\n'); // pull isolated periods and commas to the end of the previous line
-        answerText = answerText.replace(/^\s*\d+\s*$/gm, ''); // removing any stray number-only lines
-        answerText = answerText.replace(/^\s*([.,])\s*$/gm, ''); // removing any stray punctuation lines
-
-        const lines = answerText.split('\n')
-          .map(l => l.trim().replace(/\*\*/g, ''))
-          .filter(Boolean);
-
-        if (lines.length > 0) {
-          setPath(lines);
-        } else {
-          setPath(['결과를 가져올 수 없습니다.']);
-        }
+        // Enforce array format for the UI cards
+        const routes = Array.isArray(data.answer) ? data.answer : [];
+        setPath(routes.length > 0 ? routes : ['결과를 가져올 수 없습니다.']);
       } else {
         setPath(['시스템 에러 발생: ' + data.error]);
       }
@@ -167,25 +148,56 @@ export const Apps = ({ user }) => {
 
           <Card title={t('wayfinding')} className="relative group lg:col-span-1 bg-white border border-gray-200 shadow-sm">
             <div className="space-y-6">
+              <div className="flex bg-gray-100 rounded-xl p-1 gap-1 border border-gray-200">
+                <button 
+                  onClick={() => {
+                    setCommuteMode('toWork');
+                    setDestination('회사');
+                    setDeparture('');
+                  }}
+                  className={cn("flex-1 py-2 rounded-lg text-xs font-bold transition-all text-center", commuteMode === 'toWork' ? "bg-white text-blue-600 shadow-sm" : "text-gray-500")}
+                >
+                  출근
+                </button>
+                <button 
+                  onClick={() => {
+                    setCommuteMode('toHome');
+                    setDeparture('회사');
+                    setDestination('');
+                  }}
+                  className={cn("flex-1 py-2 rounded-lg text-xs font-bold transition-all text-center", commuteMode === 'toHome' ? "bg-white text-blue-600 shadow-sm" : "text-gray-500")}
+                >
+                  퇴근
+                </button>
+              </div>
+
               <div className="space-y-4">
                 <div className="space-y-1.5">
-                  <p className="text-xs font-bold text-gray-500 uppercase tracking-widest pl-1">{t('curr_node')}</p>
+                  <p className="text-xs font-bold text-gray-500 uppercase tracking-widest pl-1">출발지</p>
                   <input
                     type="text"
                     value={departure}
+                    disabled={commuteMode === 'toHome'}
                     onChange={(e) => setDeparture(e.target.value)}
                     placeholder="출발지를 입력하세요."
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-sm font-bold text-gray-900 outline-none focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-500 transition-all placeholder-gray-400"
+                    className={cn(
+                      "w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-sm font-bold outline-none focus:ring-1 transition-all placeholder-gray-400",
+                      commuteMode === 'toHome' ? "opacity-60 cursor-not-allowed bg-gray-100" : "text-gray-900 focus:border-blue-500 focus:bg-white focus:ring-blue-500"
+                    )}
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <p className="text-xs font-bold text-gray-500 uppercase tracking-widest pl-1">{t('target')}</p>
+                  <p className="text-xs font-bold text-gray-500 uppercase tracking-widest pl-1">도착지</p>
                   <input
                     type="text"
                     value={destination}
+                    disabled={commuteMode === 'toWork'}
                     onChange={(e) => setDestination(e.target.value)}
                     placeholder="목적지를 입력하세요."
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-sm font-bold text-gray-900 outline-none focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-500 transition-all placeholder-gray-400"
+                    className={cn(
+                      "w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-sm font-bold outline-none focus:ring-1 transition-all placeholder-gray-400",
+                      commuteMode === 'toWork' ? "opacity-60 cursor-not-allowed bg-gray-100" : "text-gray-900 focus:border-blue-500 focus:bg-white focus:ring-blue-500"
+                    )}
                   />
                 </div>
               </div>
@@ -199,27 +211,66 @@ export const Apps = ({ user }) => {
               </button>
 
               {path && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="bg-blue-50 rounded-2xl p-5 border border-blue-100 space-y-4"
-                >
-                  <div className="flex items-center gap-2 text-blue-600">
-                    <MapPin size={16} />
-                    <span className="text-xs font-bold tracking-widest uppercase">PATH OPTIMIZED</span>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2 text-blue-600">
+                      <MapPin size={16} />
+                      <span className="text-xs font-bold tracking-widest uppercase">Commute Options Found</span>
+                    </div>
                   </div>
-                  <div className="space-y-3">
-                    {path.map((step, i) => (
-                      <div key={i} className="flex items-start gap-4">
-                        <div className="flex flex-col items-center pt-1.5">
-                          <div className="w-2 h-2 rounded-full bg-blue-600" />
-                          {i < path.length - 1 && <div className="w-0.5 h-6 bg-blue-200 my-1" />}
+                  
+                  {Array.isArray(path) && path.length > 0 ? (
+                    path.map((route, i) => {
+                      if (typeof route === 'object' && route !== null) {
+                        return (
+                          <motion.div
+                            key={i}
+                            initial={{ opacity: 0, scale: 0.98 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ delay: i * 0.1 }}
+                            className="bg-white rounded-2xl p-6 border-2 border-gray-100 shadow-sm space-y-5 hover:border-blue-300 transition-all group relative overflow-hidden mb-4"
+                          >
+                            <div className="absolute top-0 left-0 w-1.5 h-full bg-blue-600" />
+                            <h4 className="text-lg font-black text-gray-900 leading-tight">
+                              {route.title || '추천 경로'}
+                            </h4>
+                            
+                            <div className="space-y-4 pt-2">
+                              {Array.isArray(route.steps) ? route.steps.map((step, si) => {
+                                let Icon = MapPin;
+                                if (step.includes('호선') || step.includes('지하철')) Icon = Train;
+                                if (step.includes('버스') || step.includes('노선')) Icon = Bus;
+                                if (step.includes('도보') || step.includes('걷기')) Icon = Footprints;
+
+                                return (
+                                  <div key={si} className="flex items-start gap-4 relative">
+                                    <div className="p-2 bg-gray-50 rounded-lg shrink-0">
+                                      <Icon size={14} className="text-gray-500" />
+                                    </div>
+                                    <p className="text-sm font-bold text-gray-700 leading-relaxed pt-1 flex-1">{step}</p>
+                                    {si < route.steps.length - 1 && (
+                                      <div className="absolute left-[17px] top-[34px] w-[2px] h-[30px] bg-gray-100" />
+                                    )}
+                                  </div>
+                                );
+                              }) : null}
+                            </div>
+                          </motion.div>
+                        );
+                      }
+                      return (
+                        <div key={i} className="flex items-start gap-4 bg-blue-50/50 p-4 rounded-xl border border-blue-100 mb-2 last:mb-0">
+                          <div className="w-1.5 h-1.5 rounded-full bg-blue-600 mt-1.5 shrink-0" />
+                          <p className="text-sm font-bold text-gray-800 leading-relaxed">{route}</p>
                         </div>
-                        <p className="text-sm font-bold text-gray-800 leading-relaxed pt-0.5">{step}</p>
-                      </div>
-                    ))}
-                  </div>
-                </motion.div>
+                      );
+                    })
+                  ) : (
+                    <div className="bg-rose-50 rounded-2xl p-5 border border-rose-100 italic text-sm text-rose-800">
+                      결과를 가져올 수 없습니다. 다시 시도해 주세요.
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           </Card>

@@ -181,7 +181,7 @@ function pathFindingPlugin() {
           return;
         }
 
-        // Path Finding API
+        // Path Finding API (NLM Context Only)
         if (req.url === '/api/path-finding' && req.method === 'POST') {
           let body = '';
           req.on('data', chunk => { body += chunk.toString(); });
@@ -189,14 +189,16 @@ function pathFindingPlugin() {
             res.setHeader('Content-Type', 'application/json');
             try {
               const { departure, destination } = JSON.parse(body);
-              const notebookId = "de6dee15-ad68-486b-b9f3-80d6ab7d5def"; // New wayfinding notebook ID
-              const question = `출발지는 ${departure}이고 목적지는 ${destination}입니다. 통근 경로를 다음 형식에 맞춰서 답변해줘. (각주 [1], [2] 같은 숫자는 절대 포함하지 마)\n\n[탑승버스] : [내용]\n[탑승위치] : [내용]\n[이용요금] : [내용]\n[버스 운행 시간표] : (정류장별/호차별 상세 시간표)`;
-              const answer = await runNlmQuery(notebookId, question);
-              const cleanAnswer = answer
-                .replace(/\[\d[\d\s\-,]*\]/g, '') // Remove citations like [1], [1, 2], [1-3]
-                .replace(/EXTREMELY IMPORTANT:[\s\S]*/g, '') 
-                .trim();
-              return res.end(JSON.stringify({ success: true, answer: cleanAnswer }));
+              const notebookId = "de6dee15-ad68-486b-b9f3-80d6ab7d5def";
+              const prompt = `사용자가 ${departure}에서 ${destination}으로 이동하려고 합니다. 사내 통근버스(1,500원) 및 무료 셔틀버스 노선도를 확인하여 가장 효율적인 경로 2가지를 제안해 주세요. 답변은 반드시 아래와 같은 JSON 배열 형식으로만 해주세요: [{"title": "경로명", "cost": 1500, "duration": "45분", "tags": ["추천"], "steps": ["단계1", "단계2"]}]`;
+
+              const answer = await runNlmQuery(notebookId, prompt);
+              const jsonMatch = answer.match(/\[\s*\{[\s\S]*\}\s*\]/);
+              if (jsonMatch) {
+                const routes = JSON.parse(jsonMatch[0].replace(/\[\d+\]/g, ''));
+                return res.end(JSON.stringify({ success: true, answer: routes }));
+              }
+              return res.end(JSON.stringify({ success: true, answer: [{ title: "경로 분석 결과", cost: 0, duration: "확인 필요", tags: ["AI"], steps: [answer.replace(/\[\d+\]/g, '').trim()] }] }));
             } catch (error) {
               return res.end(JSON.stringify({ success: false, error: error.message }));
             }
