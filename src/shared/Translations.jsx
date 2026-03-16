@@ -40,7 +40,7 @@ export const TRANSLATIONS = {
     dept_personnel: "부서 인원 상태",
     personal_task: "개인 과업 노드",
     perf_telemetry: "퍼포먼스 텔레메트리",
-    compliance_rate: "컴플라이언스 비율",
+    compliance_rate: "진척도",
     growth_node: "성장 노드",
     team_rank: "팀 랭킹",
     pathway_status: "성장 경로 상태",

@@ -1,17 +1,29 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { User, Users, CheckCircle2, ChevronRight, MessageSquare, TrendingUp, BookOpen, BarChart2, GraduationCap, Mic, ExternalLink, Send } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { User, Users, CheckCircle2, ChevronRight, MessageSquare, TrendingUp, BookOpen, BarChart2, GraduationCap, Mic, ExternalLink, Send, Activity, RotateCw, MapPin, Calendar, Link2, Filter } from 'lucide-react';
 import { useTranslation } from '../shared/Translations';
-import { USER_ROLES, INITIAL_MEMBERS } from '../shared/MockData';
+import { USER_ROLES, CHECKLIST_CONFIG, CONFERENCE_DATA, CONFERENCE_SEARCH_TOPICS } from '../shared/MockData';
 import { PremiumPage, SectionHeader, Card } from '../shared/SharedComponents';
 import { cn } from '../shared/utils';
-
-export const Onboarding = ({ role }) => {
+import { fetchAndOrganizeConferences } from '../services/conferenceService';
+export const Onboarding = ({ user, members, setMembers }) => {
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState('guide');
-  const [viewType, setViewType] = useState('my'); // 'my' or 'dept'
+  const role = user?.role;
+  const [mainTab, setMainTab] = useState('guide'); // 'guide', 'onboarding', 'growth'
+  const [subTab, setSubTab] = useState('my'); // 'my', 'dept' for onboarding, 'edu', 'conf' for growth
+  
   const [selectedMember, setSelectedMember] = useState(null);
-  const [members, setMembers] = useState(INITIAL_MEMBERS);
+
+  const viewType = (mainTab === 'onboarding' && subTab === 'dept') ? 'dept' : 'my';
+
+  // Expanded Categories State for Checklist
+  const [expandedCategories, setExpandedCategories] = useState([0]); // Default first category open
+
+  const toggleCategory = (idx) => {
+    setExpandedCategories(prev => 
+      prev.includes(idx) ? prev.filter(i => i !== idx) : [...prev, idx]
+    );
+  };
 
   // Chat Guide States
   const [chatMessages, setChatMessages] = useState([
@@ -20,21 +32,50 @@ export const Onboarding = ({ role }) => {
   const [chatInput, setChatInput] = useState('');
   const [isChatLoading, setIsChatLoading] = useState(false);
 
+  // Conference Filtering
+  const [isFilterExpanded, setIsFilterExpanded] = useState(false);
+  const [selectedConferenceTags, setSelectedConferenceTags] = useState([]); // Empty = ALL
+  const [conferenceTypeTab, setConferenceTypeTab] = useState('domestic'); // 'domestic' or 'global'
+  
+  // Conference Live Data State
+  const [liveConferences, setLiveConferences] = useState(CONFERENCE_DATA);
+  const [geminiApiKey, setGeminiApiKey] = useState(''); // 사용자가 입력할 수 있도록
+
+  const allConferenceTags = useMemo(() => {
+    const tags = new Set();
+    liveConferences.forEach(conf => conf.tags.forEach(t => tags.add(t)));
+    return Array.from(tags).sort();
+  }, [liveConferences]);
+
+  const toggleConferenceTag = (tag) => {
+    setSelectedConferenceTags(prev => 
+      prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
+    );
+  };
+
   const toggleCheck = (memberId, key) => {
-    setMembers(prev => prev.map(m =>
-      m.id === memberId ? { ...m, progress: { ...m.progress, [key]: !m.progress[key] } } : m
-    ));
+    setMembers(prev => prev.map(m => {
+      if (m.userId === memberId || m.id === memberId) {
+        const newProgress = { ...m.progress, [key]: !m.progress[key] };
+        // Recalculate total
+        const values = Object.values(newProgress);
+        const newTotal = Math.round((values.filter(v => v).length / values.length) * 100);
+        return { ...m, progress: newProgress, total: newTotal };
+      }
+      return m;
+    }));
   };
 
   const filteredMembers = useMemo(() => {
-    if (viewType === 'my') return members.filter(m => m.id === 1); // Mock: ID 1 is the logged-in user
-    return members.filter(m => m.type === 'DEPT');
-  }, [members, viewType]);
+    if (viewType === 'my') return members.filter(m => m.userId === user?.id); 
+    // If manager/admin looking at dept, filter by their team
+    return members.filter(m => m.dept === user?.team && m.userId !== user?.id);
+  }, [members, viewType, user]);
 
   useEffect(() => {
-    if (viewType === 'my') setSelectedMember(members.find(m => m.id === 1));
+    if (viewType === 'my') setSelectedMember(members.find(m => m.userId === user?.id));
     else setSelectedMember(null);
-  }, [viewType, members]);
+  }, [viewType, members, user]);
 
   const handleSendChat = async () => {
     if(!chatInput.trim() || isChatLoading) return;
@@ -86,59 +127,105 @@ export const Onboarding = ({ role }) => {
 
   return (
     <PremiumPage>
-      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-8">
-        <SectionHeader title={t('onboarding_title')} subtitle={t('onboarding_sub')} />
+      <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-6 mb-12 pb-6 border-b border-gray-100">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-4xl font-black text-gray-900 tracking-tight mb-1">{t('onboarding_title')}</h1>
+          <p className="text-sm font-bold text-gray-400">{t('onboarding_sub')}</p>
+        </div>
 
-        <div className="flex flex-wrap items-center gap-4 bg-white p-2 rounded-2xl shadow-sm border border-gray-100">
-          {/* Manager Toggle */}
-          {role === USER_ROLES.MANAGER && (
-            <div className="flex items-center gap-2 px-2 bg-blue-50/50 rounded-xl py-1 mr-2">
+        <div className="flex flex-col items-end gap-4">
+          {/* Main Top Hierarchy Tabs - Moved to Header Right */}
+          <div className="flex items-center gap-1 bg-white p-1.5 rounded-2xl shadow-sm border border-gray-100">
+            {[
+              { id: 'guide', label: '가이드', icon: BookOpen },
+              { id: 'onboarding', label: '온보딩', icon: User },
+              { id: 'growth', label: '성장', icon: TrendingUp }
+            ].map(tab => (
               <button
-                onClick={() => setViewType('my')}
+                key={tab.id}
+                onClick={() => {
+                  setMainTab(tab.id);
+                  if (tab.id === 'onboarding') setSubTab('my');
+                  if (tab.id === 'growth') setSubTab('edu');
+                }}
                 className={cn(
-                  "px-3 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2",
-                  viewType === 'my' ? "text-blue-600 bg-white shadow-sm" : "text-gray-500 hover:text-blue-600"
+                  "px-5 py-2.5 rounded-xl text-sm font-black transition-all flex items-center gap-2.5 outline-none",
+                  mainTab === tab.id 
+                    ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20 scale-105" 
+                    : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
                 )}
               >
-                <User size={16} /> 나의 온보딩 현황
-              </button>
-              <button
-                onClick={() => setViewType('dept')}
-                className={cn(
-                  "px-3 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2",
-                  viewType === 'dept' ? "text-blue-600 bg-white shadow-sm" : "text-gray-500 hover:text-blue-600"
-                )}
-              >
-                <Users size={16} /> 부서 현황
-              </button>
-            </div>
-          )}
-
-          {/* Main Tabs */}
-          <div className="flex gap-1">
-            {['guide', 'growth', 'education', 'conference'].map(tab => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={cn(
-                  "px-4 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2",
-                  activeTab === tab 
-                    ? "bg-blue-600 text-white shadow-md shadow-blue-600/20" 
-                    : "text-gray-600 hover:bg-gray-100"
-                )}
-              >
-                <TabIcon tab={tab} />
-                {t(`tab_${tab}`)}
+                <tab.icon size={18} />
+                {tab.label}
               </button>
             ))}
           </div>
+
+          {/* Sub Tabs based on Main Tab Selection - Moved high up next to main tabs */}
+          <AnimatePresence mode="wait">
+            {(mainTab === 'onboarding' || mainTab === 'growth') && (
+              <motion.div 
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="flex items-center gap-1 bg-gray-50/50 p-1 rounded-xl border border-gray-100"
+              >
+                {mainTab === 'onboarding' && (
+                  <>
+                    <button
+                      onClick={() => setSubTab('my')}
+                      className={cn(
+                        "px-4 py-1.5 rounded-lg text-xs font-black transition-all",
+                        subTab === 'my' ? "bg-white text-blue-600 shadow-sm" : "text-gray-500 hover:text-gray-800"
+                      )}
+                    >
+                      나의 현황
+                    </button>
+                    {(role === USER_ROLES.MANAGER || role === USER_ROLES.ADMIN) && (
+                      <button
+                        onClick={() => setSubTab('dept')}
+                        className={cn(
+                          "px-4 py-1.5 rounded-lg text-xs font-black transition-all",
+                          subTab === 'dept' ? "bg-white text-blue-600 shadow-sm" : "text-gray-500 hover:text-gray-800"
+                        )}
+                      >
+                        부서 현황
+                      </button>
+                    )}
+                  </>
+                )}
+                {mainTab === 'growth' && (
+                  <>
+                    <button
+                      onClick={() => setSubTab('edu')}
+                      className={cn(
+                        "px-4 py-1.5 rounded-lg text-xs font-black transition-all",
+                        subTab === 'edu' ? "bg-white text-blue-600 shadow-sm" : "text-gray-500 hover:text-gray-800"
+                      )}
+                    >
+                      교육
+                    </button>
+                    <button
+                      onClick={() => setSubTab('conf')}
+                      className={cn(
+                        "px-4 py-1.5 rounded-lg text-xs font-black transition-all",
+                        subTab === 'conf' ? "bg-white text-blue-600 shadow-sm" : "text-gray-500 hover:text-gray-800"
+                      )}
+                    >
+                      컨퍼런스
+                    </button>
+                  </>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         
-        {/* GROWTH TAB */}
-        {activeTab === 'growth' && (
+        {/* ONBOARDING CONTENT (나의 현황 / 부서 현황) */}
+        {mainTab === 'onboarding' && (
           <>
             {/* Personnel List (Visible in Dept mode) */}
             {viewType === 'dept' && (
@@ -180,27 +267,68 @@ export const Onboarding = ({ role }) => {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <Card title={selectedMember ? `${selectedMember.name}'s Checklist` : t('personal_task')}>
-                    <div className="space-y-3">
-                      {Object.entries(selectedMember?.progress || members[0].progress).map(([key, done]) => (
-                        <button
-                          key={key}
-                          onClick={() => (viewType === 'my') && toggleCheck(selectedMember?.id || 1, key)}
-                          className={cn(
-                            "w-full flex items-center justify-between p-4 rounded-xl border transition-all",
-                            done 
-                              ? "bg-blue-50/50 border-blue-100 text-blue-600" 
-                              : "bg-gray-50 border-gray-100 text-gray-600",
-                            viewType === 'my' && "cursor-pointer hover:bg-gray-100",
-                            viewType === 'dept' && "cursor-default" 
-                          )}
-                        >
-                          <div className="flex items-center gap-3">
-                            {done ? <CheckCircle2 size={20} className="text-blue-600" /> : <div className="w-5 h-5 rounded-full border-2 border-gray-300" />}
-                            <span className="font-bold text-sm">{key.replace('_', ' ')}</span>
+                    <div className="space-y-4">
+                      {CHECKLIST_CONFIG.map((group, gIdx) => {
+                        const isExpanded = expandedCategories.includes(gIdx);
+                        const groupItems = group.items;
+                        const completedCount = groupItems.filter(item => selectedMember?.progress?.[item.id]).length;
+                        
+                        return (
+                          <div key={gIdx} className="border border-gray-100 rounded-2xl overflow-hidden bg-white shadow-sm">
+                            <button 
+                              onClick={() => toggleCategory(gIdx)}
+                              className="w-full flex items-center justify-between p-4 bg-gray-50/50 hover:bg-gray-50 transition-colors"
+                            >
+                              <div className="flex items-center gap-3">
+                                <h4 className="text-xs font-black text-gray-900 uppercase tracking-widest leading-none">{group.category}</h4>
+                                <span className="text-[10px] font-bold bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full">
+                                  {completedCount} / {groupItems.length}
+                                </span>
+                              </div>
+                              <div className="text-gray-400">
+                                {isExpanded ? <Activity size={14} className="text-blue-500 animate-pulse" /> : <ChevronRight size={14} />}
+                              </div>
+                            </button>
+                            
+                            <AnimatePresence>
+                              {isExpanded && (
+                                <motion.div
+                                  initial={{ height: 0, opacity: 0 }}
+                                  animate={{ height: 'auto', opacity: 1 }}
+                                  exit={{ height: 0, opacity: 0 }}
+                                  className="overflow-hidden"
+                                >
+                                  <div className="p-4 pt-2 grid gap-2">
+                                    {groupItems.map((item) => {
+                                      const done = selectedMember?.progress?.[item.id];
+                                      return (
+                                        <button
+                                          key={item.id}
+                                          onClick={() => (viewType === 'my') && toggleCheck(selectedMember?.userId || user?.id, item.id)}
+                                          className={cn(
+                                            "w-full flex items-center justify-between p-3.5 rounded-xl border transition-all",
+                                            done 
+                                              ? "bg-blue-50/20 border-blue-100 text-blue-600" 
+                                              : "bg-white border-gray-100 text-gray-600",
+                                            viewType === 'my' && "cursor-pointer hover:border-blue-200 hover:shadow-sm",
+                                            viewType === 'dept' && "cursor-default opacity-80" 
+                                          )}
+                                        >
+                                          <div className="flex items-center gap-3">
+                                            {done ? <CheckCircle2 size={16} className="text-blue-600" /> : <div className="w-3.5 h-3.5 rounded-full border-2 border-gray-200" />}
+                                            <span className="font-bold text-sm tracking-tight">{item.label}</span>
+                                          </div>
+                                          {viewType === 'my' && !done && <div className="w-1.5 h-1.5 rounded-full bg-gray-200" />}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
                           </div>
-                          {viewType === 'my' && <ChevronRight size={16} className="text-gray-400" />}
-                        </button>
-                      ))}
+                        );
+                      })}
                     </div>
                   </Card>
 
@@ -214,13 +342,13 @@ export const Onboarding = ({ role }) => {
                               cx="80" cy="80" r="70"
                               stroke="currentColor" strokeWidth="12" strokeDasharray="440"
                               initial={{ strokeDashoffset: 440 }}
-                              animate={{ strokeDashoffset: 440 - (440 * (selectedMember?.total || 75) / 100) }}
+                              animate={{ strokeDashoffset: 440 - (440 * (selectedMember?.total ?? 0) / 100) }}
                               className="text-blue-600 fill-none"
                               strokeLinecap="round"
                             />
                           </svg>
                           <div className="absolute inset-0 flex flex-col items-center justify-center">
-                            <span className="text-3xl font-black text-gray-900">{selectedMember?.total || 75}%</span>
+                            <span className="text-3xl font-black text-gray-900">{selectedMember?.total ?? 0}%</span>
                             <span className="text-xs font-bold text-gray-500 mt-1">{t('compliance_rate')}</span>
                           </div>
                         </div>
@@ -244,7 +372,7 @@ export const Onboarding = ({ role }) => {
         )}
 
         {/* GUIDE TAB (NotebookLM Chat) */}
-        {activeTab === 'guide' && (
+        {mainTab === 'guide' && (
           <div className="lg:col-span-4 h-[600px] flex flex-col bg-[#1a1f2e] border border-gray-800 rounded-2xl overflow-hidden shadow-xl relative">
              <div className="px-6 py-4 bg-[#232938] border-b border-gray-700 flex justify-between items-center z-10 shrink-0">
                <div className="flex items-start gap-4">
@@ -305,6 +433,253 @@ export const Onboarding = ({ role }) => {
                    </button>
                 </div>
              </div>
+          </div>
+        )}
+
+        {/* EDUCATION TAB (Growth Sub-tab) */}
+        {mainTab === 'growth' && subTab === 'edu' && (
+          <div className="lg:col-span-4 grid grid-cols-1 md:grid-cols-3 gap-6">
+            {[
+              { title: 'SW 아키텍처 기본', date: '2026-04-10', instructor: '김철수 책임', tag: '필수' },
+              { title: 'Modern C++ 핵심', date: '2026-04-15', instructor: '이영희 수석', tag: '심화' },
+              { title: 'AUTOSAR 실무', date: '2026-04-22', instructor: '박지성 팀장', tag: '전문' }
+            ].map((edu, idx) => (
+              <Card key={idx} className="hover:shadow-md transition-shadow">
+                <div className="flex flex-col h-full">
+                  <div className="flex justify-between items-start mb-4">
+                    <span className="px-2 py-1 bg-blue-50 text-blue-600 text-[10px] font-bold rounded uppercase tracking-wider">{edu.tag}</span>
+                    <GraduationCap size={20} className="text-gray-300" />
+                  </div>
+                  <h3 className="text-lg font-bold text-gray-900 mb-2">{edu.title}</h3>
+                  <div className="mt-auto pt-4 border-t border-gray-50 flex justify-between items-center">
+                    <div className="text-xs text-gray-500">
+                      <p className="font-bold">{edu.instructor}</p>
+                      <p>{edu.date}</p>
+                    </div>
+                    <button className="text-xs font-bold text-blue-600 hover:underline">신청하기</button>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+
+        {/* CONFERENCE TAB (Growth Sub-tab) */}
+        {mainTab === 'growth' && subTab === 'conf' && (
+          <div className="lg:col-span-4 space-y-6">
+            <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
+              <div className="flex flex-col sm:flex-row justify-between items-center p-4 bg-gray-50/50 gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="flex bg-gray-100 p-1 rounded-xl border border-gray-200">
+                    {[
+                      { id: 'domestic', label: '국내 행사' },
+                      { id: 'global', label: '해외 행사' }
+                    ].map(tab => (
+                      <button
+                        key={tab.id}
+                        onClick={() => setConferenceTypeTab(tab.id)}
+                        className={cn(
+                          "px-4 py-1.5 rounded-lg text-xs font-black transition-all",
+                          conferenceTypeTab === tab.id 
+                            ? "bg-white text-blue-600 shadow-sm" 
+                            : "text-gray-500 hover:text-gray-800"
+                        )}
+                      >
+                        {tab.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={() => setIsFilterExpanded(!isFilterExpanded)}
+                      className={cn(
+                        "flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border",
+                        isFilterExpanded ? "bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-200" : "bg-white border-gray-200 text-gray-500 hover:border-gray-300"
+                      )}
+                    >
+                      <Filter size={14} />
+                      키워드 상세 선택
+                      {selectedConferenceTags.length > 0 && (
+                        <span className="bg-white text-blue-600 px-1.5 py-0.5 rounded-md text-[10px] ml-1">
+                          {selectedConferenceTags.length}
+                        </span>
+                      )}
+                    </button>
+                    {selectedConferenceTags.length > 0 && (
+                      <button 
+                        onClick={() => setSelectedConferenceTags([])}
+                        className="text-[10px] font-bold text-gray-400 hover:text-rose-500 transition-colors"
+                      >
+                        초기화
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <button 
+                  onClick={async () => {
+                    if (!geminiApiKey) {
+                      const key = prompt("AI 정제를 위해 Gemini API Key를 입력해주세요. (없을 경우 취소를 누르면 시뮬레이션으로 진행됩니다)");
+                      if (!key) {
+                        alert("시뮬레이션 모드로 진행합니다.");
+                        setIsChatLoading(true);
+                        setTimeout(() => {
+                          setIsChatLoading(false);
+                          alert("AI 에이전트(저)와의 대화창에 '갱신해줘'라고 요청하시면 제가 데이터를 직접 업데이트해 드립니다.");
+                        }, 1000);
+                        return;
+                      }
+                      setGeminiApiKey(key);
+                    }
+
+                    setIsChatLoading(true);
+                    try {
+                      const now = new Date();
+                      const newData = await fetchAndOrganizeConferences(
+                        geminiApiKey || prompt("Gemini API Key를 입력해주세요"), 
+                        CONFERENCE_SEARCH_TOPICS, 
+                        now.getFullYear()
+                      );
+                      setLiveConferences(newData);
+                      alert("실시간 검색 및 AI 정제가 완료되었습니다!");
+                    } catch (err) {
+                      console.error("Refresh Error:", err);
+                      const errorMsg = err.response?.data?.error?.message || err.message;
+                      alert(`갱신 중 오류가 발생했습니다: ${errorMsg}\n\n도움말: API 키가 올바른지 확인하시거나, 키가 없다면 취소를 눌러 '에이전트 요청 모드'로 진행해 주세요.`);
+                    } finally {
+                      setIsChatLoading(false);
+                    }
+                  }}
+                  disabled={isChatLoading}
+                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 border-none rounded-xl text-xs font-black text-white hover:shadow-lg hover:shadow-blue-200 transition-all shadow-sm active:scale-95 disabled:opacity-50"
+                >
+                  <RotateCw size={14} className={cn(isChatLoading && "animate-spin")} />
+                  {isChatLoading ? "AI 싱크 중..." : "AI 실시간 갱신"}
+                </button>
+              </div>
+
+              <AnimatePresence>
+                {/* ... existing filter content ... */}
+                {isFilterExpanded && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="border-t border-gray-50 bg-white"
+                  >
+                    <div className="p-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                      <button
+                        onClick={() => setSelectedConferenceTags([])}
+                        className={cn(
+                          "flex items-center justify-center p-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border",
+                          selectedConferenceTags.length === 0 
+                            ? "bg-blue-50 border-blue-200 text-blue-600" 
+                            : "bg-white border-gray-100 text-gray-400 hover:border-gray-200"
+                        )}
+                      >
+                        ALL
+                      </button>
+                      {allConferenceTags.map(tag => {
+                        const isSelected = selectedConferenceTags.includes(tag);
+                        return (
+                          <button
+                            key={tag}
+                            onClick={() => toggleConferenceTag(tag)}
+                            className={cn(
+                              "flex items-center justify-center p-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border",
+                              isSelected 
+                                ? "bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-200" 
+                                : "bg-white border-gray-100 text-gray-400 hover:border-gray-200 hover:text-gray-600"
+                            )}
+                          >
+                            {tag}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {(() => {
+                const filtered = liveConferences
+                  .filter(conf => {
+                    const isFuture = new Date(conf.date) >= new Date().setHours(0,0,0,0);
+                    const matchesTag = selectedConferenceTags.length === 0 || 
+                                     conf.tags.some(t => selectedConferenceTags.includes(t));
+                    const matchesType = conf.type === conferenceTypeTab;
+                    return isFuture && matchesTag && matchesType;
+                  })
+                  .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+                if (filtered.length === 0) {
+                  return (
+                    <div className="col-span-1 md:col-span-2 py-20 flex flex-col items-center justify-center bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
+                      <Calendar size={48} className="text-gray-300 mb-4" />
+                      <p className="text-sm font-bold text-gray-400">일치하는 행사 정보가 없습니다.</p>
+                      <button 
+                        onClick={() => { setSelectedConferenceTags([]); setConferenceTypeTab('domestic'); }}
+                        className="mt-4 text-xs font-black text-blue-600 hover:underline"
+                      >
+                        필터 초기화
+                      </button>
+                    </div>
+                  );
+                }
+
+                return filtered.map((conf, cIdx) => (
+                  <motion.div
+                    key={conf.id}
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: cIdx * 0.1 }}
+                  >
+                  <Card className="group hover:border-blue-200 hover:shadow-xl transition-all duration-300 overflow-hidden border-gray-100 p-6">
+                    <div className="flex gap-6 items-start">
+                      {/* Date Icon */}
+                      <div className="w-20 h-20 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl flex flex-col items-center justify-center text-white shrink-0 shadow-lg shadow-blue-200">
+                        <span className="text-[10px] font-bold uppercase tracking-tighter opacity-80">{new Date(conf.date).toLocaleString('default', { month: 'short' })}</span>
+                        <span className="text-2xl font-black">{new Date(conf.date).getDate()}</span>
+                      </div>
+                      
+                      {/* Content */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-start gap-4 mb-2">
+                          <div className="flex flex-wrap gap-2">
+                            {conf.tags.map(tag => (
+                              <span key={tag} className="text-[8px] font-black uppercase tracking-widest bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">{tag}</span>
+                            ))}
+                          </div>
+                          <a 
+                            href={conf.link} 
+                            target="_blank" 
+                            rel="noreferrer" 
+                            className="shrink-0 p-2 bg-gray-50 text-gray-400 rounded-xl hover:bg-blue-50 hover:text-blue-600 transition-all border border-transparent hover:border-blue-100"
+                            title="홈페이지 방문"
+                          >
+                            <ExternalLink size={14} />
+                          </a>
+                        </div>
+
+                        <h3 className="text-lg font-black text-gray-900 mb-2 leading-tight group-hover:text-blue-600 transition-colors uppercase tracking-tight truncate">
+                          {conf.title}
+                        </h3>
+                        <p className="text-sm font-medium text-gray-500 mb-4 line-clamp-2 leading-relaxed">
+                          {conf.desc}
+                        </p>
+                        
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-4 text-xs font-bold text-gray-400 border-t border-gray-50 pt-4">
+                          <span className="flex items-center gap-1.5"><MapPin size={14} className="text-blue-500/50" /> {conf.location}</span>
+                          <span className="flex items-center gap-1.5"><Calendar size={14} className="text-blue-500/50" /> {conf.date}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                </motion.div>
+                ))})()}
+            </div>
           </div>
         )}
 

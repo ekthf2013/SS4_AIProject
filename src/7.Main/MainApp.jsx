@@ -16,12 +16,15 @@ import {
   LogOut,
   X,
   Shield,
-  Edit3
+  Edit3,
+  Mic,
+  GraduationCap,
+  Users
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { useTranslation, LanguageProvider } from '../shared/Translations';
-import { USER_ROLES } from '../shared/MockData';
+import { USER_ROLES, INITIAL_MEMBERS } from '../shared/MockData';
 import { cn } from '../shared/utils';
 import { LanguageToggle } from '../shared/SharedComponents';
 
@@ -36,6 +39,7 @@ import { SettingsPage } from '../6.Settings/SettingsPage';
 const MainAppContent = () => {
   const { lang, setLang, t } = useTranslation();
   const [user, setUser] = useState(null);
+  const [members, setMembers] = useState(INITIAL_MEMBERS);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isCoPilotOpen, setIsCoPilotOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -53,8 +57,8 @@ const MainAppContent = () => {
     ]);
   }, [lang, t]);
 
-  const handleLogin = (id) => {
-    setUser({ id, role: id === 'admin' ? USER_ROLES.ADMIN : USER_ROLES.MANAGER });
+  const handleLogin = (userInfo) => {
+    setUser(userInfo);
   };
 
   const sendMessage = () => {
@@ -76,11 +80,11 @@ const MainAppContent = () => {
     {
       category: '온보딩',
       items: [
-        { id: 'onboarding', icon: GraduationCapIcon, label: '온보딩 포털' }
+        { id: 'onboarding', icon: GraduationCap, label: '온보딩 포털' }
       ]
     },
     {
-      category: '지식베이스',
+      category: '자료실',
       items: [
         { id: 'knowledge', icon: BookOpen, label: '자료실' }
       ]
@@ -88,22 +92,13 @@ const MainAppContent = () => {
     {
       category: null,
       items: [
-        { id: 'apps', icon: LayoutGridIcon, label: 'Apps' },
+        { id: 'apps', icon: Layers, label: 'Apps' },
         { id: 'settings', icon: Settings, label: 'Settings' }
       ]
     }
   ];
 
   // Map icons for simple usage
-  function GraduationCapIcon(props) {
-    return (
-       <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.42 10.922a2 2 0 0 1-.019 3.837l-9.28 3.093a2 2 0 0 1-1.242 0l-9.28-3.093a2 2 0 0 1-.019-3.837l9.28-3.093a2 2 0 0 1 1.242 0z"/><path d="M14 22v-6.53"/><path d="M10 22v-6.53"/><path d="M12 22v-6.53"/><path d="M10 22h4"/></svg>
-    ) // Actually just use lucide-react GraduationCap if we had it, but this is a fallback.
-  }
-  function LayoutGridIcon(props) {
-     return <Layers {...props} />;
-  }
-
   const getActiveLabel = () => {
     for (const cat of NAV_CATEGORIES) {
       const found = cat.items.find(i => i.id === activeTab);
@@ -160,14 +155,14 @@ const MainAppContent = () => {
               <div className="bg-gray-50 rounded-xl p-4 flex items-center justify-between border border-gray-100">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-sm">
-                    {user.id === 'admin' ? 'H' : 'U'}
+                    {user.name.charAt(0)}
                   </div>
                   <div className="flex flex-col items-start">
                     <p className="text-sm font-bold text-gray-900 leading-tight">
-                       {user.id === 'admin' ? 'hjsong' : 'User'}
+                       {user.name}
                     </p>
                     <p className="text-[10px] text-gray-500 leading-tight">
-                       {user.role === USER_ROLES.ADMIN ? 'Admin' : 'Manager'}
+                       {user.team} | {user.position}
                     </p>
                     {user.role === USER_ROLES.ADMIN && (
                        <span className="text-[8px] font-bold text-red-500 mt-0.5 tracking-wider uppercase">ADMIN</span>
@@ -202,7 +197,7 @@ const MainAppContent = () => {
             </header>
 
             {/* PAGE CONTENT */}
-            <main className="flex-1 overflow-y-auto p-8 scroll-smooth">
+            <main className="flex-1 overflow-y-auto p-8 scroll-smooth" style={{ scrollbarGutter: 'stable' }}>
               <AnimatePresence mode="wait">
                 <motion.div
                   key={activeTab}
@@ -211,7 +206,13 @@ const MainAppContent = () => {
                   exit={{ opacity: 0, y: -10 }}
                 >
                   {activeTab === 'dashboard' && <Dashboard />}
-                  {activeTab === 'onboarding' && <Onboarding role={user.role} />}
+                   {activeTab === 'onboarding' && (
+                    <Onboarding 
+                      user={user} 
+                      members={members} 
+                      setMembers={setMembers} 
+                    />
+                  )}
                   {activeTab === 'knowledge' && <KnowledgeBase />}
                   {activeTab === 'apps' && <Apps user={user} />}
                   {activeTab === 'settings' && <SettingsPage />}
