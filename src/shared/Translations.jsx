@@ -4,11 +4,11 @@ export const TRANSLATIONS = {
   ko: {
     // Auth
     auth_title: "AI 비서",
-    auth_subtitle: "보안 액세스 프로토콜",
-    input_id: "ID 입력",
-    id_placeholder: "ADMIN 또는 MANAGER 입력",
+    auth_subtitle: "SDV 시스템실 AI 비서 웹페이지입니다.",
+    input_id: "ID",
+    id_placeholder: "ID를 입력하세요.",
     authenticate: "인증하기",
-    invalid_id: '유효하지 않은 ID: "admin" 또는 "manager"를 사용하세요',
+    invalid_id: '유효하지 않은 ID입니다.',
 
     // Sidebar/Nav
     dashboard: "대시보드",
@@ -48,7 +48,7 @@ export const TRANSLATIONS = {
 
     // Knowledge Base
     vault_title: "지식 데이터 저장소",
-    vault_sub: "엔지니어링 인텔리전스 시스템",
+    vault_sub: "각종 지식 정보 및 문서",
     gen_exam: "시험 문제 생성",
     doc_index: "문서 리스트",
     doc_type: "문서",
@@ -77,18 +77,15 @@ export const TRANSLATIONS = {
     dining_vote: "회식 메뉴 투표",
     vote_q: "회식 메뉴를 골라주세요.",
     vote_active: "",
-    vote_reg: "✓ 블록체인 모듈에 투표 등록됨",
+    vote_reg: "✓ 투표 완료",
 
     // Settings
     sys_config: "설정",
-    config_sub: "터미널 및 프로토콜 설정",
-    prof_synth: "프로필 합성",
+    config_sub: "프로필 설정",
+    prof_synth: "프로필 정보",
     edit_sig: "프로필 편집",
     dark_mode: "다크 모드",
     realtime_tele: "실시간 텔레메트리",
-    hw_interface: "하드웨어 인터페이스",
-    gpu_acc: "GPU 가속 활성",
-    neural_core: "뉴럴 코어 v4.1 동기화됨",
     access_rest: "시스템 설계자에게만 접근이 제한됨. 코어 파라미터 수정 시 동기화 오류 또는 프로젝트 무결성 저하가 발생할 수 있음.",
 
     // Co-Pilot
@@ -96,21 +93,17 @@ export const TRANSLATIONS = {
     copilot_sub: "AI 어시스턴트",
     init_cmd: "명령어 개시...",
     ai_greet: "안녕하십니까. 어떤 도움을 드릴까요?",
-    ai_proc: "요청 처리 중... 데이터베이스에서 데이터 추출 중. 솔루션 최적화 완료.",
+    ai_proc: "요청 처리 중...",
 
-    // Common
-    status_online: "상태: 온라인",
-    probe_data: "검색...",
-    terminal_id: "터미널.A-102"
   },
   en: {
     // Auth
     auth_title: "NEURAL AUTH",
     auth_subtitle: "Secure Access Protocol",
     input_id: "Input Terminal ID",
-    id_placeholder: "ENTER ADMIN OR MANAGER",
+    id_placeholder: "Enter ID",
     authenticate: "Authenticate",
-    invalid_id: 'INVALID ID: USE "admin" OR "manager"',
+    invalid_id: "Invalid ID",
 
     // Sidebar/Nav
     dashboard: "Dashboard",

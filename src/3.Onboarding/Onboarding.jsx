@@ -6,7 +6,7 @@ import { USER_ROLES, CHECKLIST_CONFIG, CONFERENCE_DATA, CONFERENCE_SEARCH_TOPICS
 import { PremiumPage, SectionHeader, Card } from '../shared/SharedComponents';
 import { cn } from '../shared/utils';
 import { fetchAndOrganizeConferences } from '../services/conferenceService';
-export const Onboarding = ({ user, members, setMembers }) => {
+export const Onboarding = ({ user, members, setMembers, addNotification, theme }) => {
   const { t } = useTranslation();
   const role = user?.role;
   const [mainTab, setMainTab] = useState('guide'); // 'guide', 'onboarding', 'growth'
@@ -139,10 +139,14 @@ export const Onboarding = ({ user, members, setMembers }) => {
     );
   };
 
-  const toggleCheck = (memberId, key) => {
+  const toggleCheck = (memberId, key, label) => {
     setMembers(prev => prev.map(m => {
       if (m.userId === memberId || m.id === memberId) {
-        const newProgress = { ...m.progress, [key]: !m.progress[key] };
+        const isComplete = !m.progress[key];
+        if (isComplete) {
+          addNotification(`[온보딩] ${m.name}님이 "${label}" 항목을 완료했습니다!`);
+        }
+        const newProgress = { ...m.progress, [key]: isComplete };
         // Recalculate total
         const values = Object.values(newProgress);
         const newTotal = Math.round((values.filter(v => v).length / values.length) * 100);
@@ -212,16 +216,25 @@ export const Onboarding = ({ user, members, setMembers }) => {
   };
 
   return (
-    <PremiumPage>
-      <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-6 mb-12 pb-6 border-b border-gray-100">
+    <PremiumPage theme={theme}>
+      <div className={cn(
+        "flex flex-col lg:flex-row lg:items-start justify-between gap-6 mb-12 pb-6 border-b transition-colors duration-500",
+        theme === 'dark' ? "border-slate-800" : "border-gray-100"
+      )}>
         <div className="flex flex-col gap-1">
-          <h1 className="text-4xl font-black text-gray-900 tracking-tight mb-1">{t('onboarding_title')}</h1>
+          <h1 className={cn(
+            "text-4xl font-black tracking-tight mb-1 transition-colors duration-500",
+            theme === 'dark' ? "text-slate-100" : "text-gray-900"
+          )}>{t('onboarding_title')}</h1>
           <p className="text-sm font-bold text-gray-400">{t('onboarding_sub')}</p>
         </div>
 
         <div className="flex flex-col items-end gap-4">
           {/* Main Top Hierarchy Tabs - Moved to Header Right */}
-          <div className="flex items-center gap-1 bg-white p-1.5 rounded-2xl shadow-sm border border-gray-100">
+          <div className={cn(
+            "flex items-center gap-1 p-1.5 rounded-2xl shadow-sm border transition-colors duration-500",
+            theme === 'dark' ? "bg-slate-800 border-slate-700" : "bg-white border-gray-100"
+          )}>
             {[
               { id: 'guide', label: '가이드', icon: BookOpen },
               { id: 'onboarding', label: '온보딩', icon: User },
@@ -238,7 +251,7 @@ export const Onboarding = ({ user, members, setMembers }) => {
                   "px-5 py-2.5 rounded-xl text-sm font-black transition-all flex items-center gap-2.5 outline-none",
                   mainTab === tab.id 
                     ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20 scale-105" 
-                    : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
+                    : (theme === 'dark' ? "text-slate-400 hover:bg-slate-700 hover:text-slate-200" : "text-gray-500 hover:bg-gray-50 hover:text-gray-900")
                 )}
               >
                 <tab.icon size={18} />
@@ -254,7 +267,10 @@ export const Onboarding = ({ user, members, setMembers }) => {
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="flex items-center gap-1 bg-gray-50/50 p-1 rounded-xl border border-gray-100"
+                className={cn(
+                  "flex items-center gap-1 p-1 rounded-xl border transition-colors",
+                  theme === 'dark' ? "bg-slate-800/50 border-slate-700" : "bg-gray-50/50 p-1 rounded-xl border border-gray-100"
+                )}
               >
                 {mainTab === 'onboarding' && (
                   <>
@@ -364,7 +380,7 @@ export const Onboarding = ({ user, members, setMembers }) => {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <Card title={selectedMember ? `${selectedMember.name}'s Checklist` : t('personal_task')}>
+                  <Card title={selectedMember ? `${selectedMember.name}'s Checklist` : t('personal_task')} theme={theme}>
                     <div className="space-y-4">
                       {CHECKLIST_CONFIG.map((group, gIdx) => {
                         const isExpanded = expandedCategories.includes(gIdx);
@@ -372,13 +388,22 @@ export const Onboarding = ({ user, members, setMembers }) => {
                         const completedCount = groupItems.filter(item => selectedMember?.progress?.[item.id]).length;
                         
                         return (
-                          <div key={gIdx} className="border border-gray-100 rounded-2xl overflow-hidden bg-white shadow-sm">
+                          <div key={gIdx} className={cn(
+                            "border rounded-2xl overflow-hidden shadow-sm transition-colors duration-500",
+                            theme === 'dark' ? "bg-slate-800 border-slate-700" : "bg-white border-gray-100"
+                          )}>
                             <button 
                               onClick={() => toggleCategory(gIdx)}
-                              className="w-full flex items-center justify-between p-4 bg-gray-50/50 hover:bg-gray-50 transition-colors"
+                              className={cn(
+                                "w-full flex items-center justify-between p-4 transition-colors",
+                                theme === 'dark' ? "bg-slate-800/50 hover:bg-slate-700" : "bg-gray-50/50 hover:bg-gray-50"
+                              )}
                             >
                               <div className="flex items-center gap-3">
-                                <h4 className="text-xs font-black text-gray-900 uppercase tracking-widest leading-none">{group.category}</h4>
+                                <h4 className={cn(
+                                  "text-xs font-black uppercase tracking-widest leading-none",
+                                  theme === 'dark' ? "text-slate-100" : "text-gray-900"
+                                )}>{group.category}</h4>
                                 <span className="text-[10px] font-bold bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full">
                                   {completedCount} / {groupItems.length}
                                 </span>
@@ -402,18 +427,21 @@ export const Onboarding = ({ user, members, setMembers }) => {
                                       return (
                                         <button
                                           key={item.id}
-                                          onClick={() => (viewType === 'my') && toggleCheck(selectedMember?.userId || user?.id, item.id)}
+                                          onClick={() => (viewType === 'my') && toggleCheck(selectedMember?.userId || user?.id, item.id, item.label)}
                                           className={cn(
                                             "w-full flex items-center justify-between p-3.5 rounded-xl border transition-all",
                                             done 
-                                              ? "bg-blue-50/20 border-blue-100 text-blue-600" 
-                                              : "bg-white border-gray-100 text-gray-600",
-                                            viewType === 'my' && "cursor-pointer hover:border-blue-200 hover:shadow-sm",
+                                              ? (theme === 'dark' ? "bg-blue-600/10 border-blue-500/50 text-blue-400" : "bg-blue-50/20 border-blue-100 text-blue-600") 
+                                              : (theme === 'dark' ? "bg-slate-900 border-slate-700 text-slate-400" : "bg-white border-gray-100 text-gray-600"),
+                                            viewType === 'my' && (theme === 'dark' ? "cursor-pointer hover:border-blue-500" : "cursor-pointer hover:border-blue-200 hover:shadow-sm"),
                                             viewType === 'dept' && "cursor-default opacity-80" 
                                           )}
                                         >
                                           <div className="flex items-center gap-3">
-                                            {done ? <CheckCircle2 size={16} className="text-blue-600" /> : <div className="w-3.5 h-3.5 rounded-full border-2 border-gray-200" />}
+                                            {done ? <CheckCircle2 size={16} className="text-blue-600" /> : <div className={cn(
+                                              "w-3.5 h-3.5 rounded-full border-2",
+                                              theme === 'dark' ? "border-slate-700" : "border-gray-200"
+                                            )} />}
                                             <span className="font-bold text-sm tracking-tight">{item.label}</span>
                                           </div>
                                           {viewType === 'my' && !done && <div className="w-1.5 h-1.5 rounded-full bg-gray-200" />}
@@ -431,7 +459,7 @@ export const Onboarding = ({ user, members, setMembers }) => {
                   </Card>
 
                   <div className="space-y-6">
-                    <Card title={t('perf_telemetry')}>
+                    <Card title={t('perf_telemetry')} theme={theme}>
                       <div className="flex flex-col items-center justify-center p-4 space-y-6">
                         <div className="relative w-40 h-40">
                           <svg className="w-full h-full -rotate-90">
@@ -446,18 +474,33 @@ export const Onboarding = ({ user, members, setMembers }) => {
                             />
                           </svg>
                           <div className="absolute inset-0 flex flex-col items-center justify-center">
-                            <span className="text-3xl font-black text-gray-900">{selectedMember?.total ?? 0}%</span>
+                            <span className={cn(
+                              "text-3xl font-black",
+                              theme === 'dark' ? "text-slate-100" : "text-gray-900"
+                            )}>{selectedMember?.total ?? 0}%</span>
                             <span className="text-xs font-bold text-gray-500 mt-1">{t('compliance_rate')}</span>
                           </div>
                         </div>
                         <div className="w-full grid grid-cols-2 gap-4">
-                          <div className="bg-blue-50 p-4 rounded-2xl text-center border border-blue-100">
+                          <div className={cn(
+                            "p-4 rounded-2xl text-center border transition-colors",
+                            theme === 'dark' ? "bg-blue-900/20 border-blue-800/50" : "bg-blue-50 border-blue-100"
+                          )}>
                             <p className="text-xs font-bold text-blue-600 mb-1">{t('growth_node')}</p>
-                            <p className="text-lg font-black text-gray-900">+2.5%</p>
+                            <p className={cn(
+                              "text-lg font-black",
+                              theme === 'dark' ? "text-slate-100" : "text-gray-900"
+                            )}>+2.5%</p>
                           </div>
-                          <div className="bg-gray-50 p-4 rounded-2xl text-center border border-gray-100">
+                          <div className={cn(
+                            "p-4 rounded-2xl text-center border transition-colors",
+                            theme === 'dark' ? "bg-slate-800 border-slate-700" : "bg-gray-50 border-gray-100"
+                          )}>
                             <p className="text-xs font-bold text-gray-500 mb-1">{t('team_rank')}</p>
-                            <p className="text-lg font-black text-gray-900">#04</p>
+                            <p className={cn(
+                              "text-lg font-black",
+                              theme === 'dark' ? "text-slate-100" : "text-gray-900"
+                            )}>#04</p>
                           </div>
                         </div>
                       </div>
@@ -471,15 +514,21 @@ export const Onboarding = ({ user, members, setMembers }) => {
 
         {/* GUIDE TAB (NotebookLM Chat) */}
         {mainTab === 'guide' && (
-          <div className="lg:col-span-4 h-[600px] flex flex-col bg-[#1a1f2e] border border-gray-800 rounded-2xl overflow-hidden shadow-xl relative">
-             <div className="px-6 py-4 bg-[#232938] border-b border-gray-700 flex justify-between items-center z-10 shrink-0">
+          <div className={cn(
+            "lg:col-span-4 h-[600px] flex flex-col border rounded-2xl overflow-hidden shadow-xl relative transition-colors duration-500",
+            theme === 'dark' ? "bg-slate-900 border-slate-800" : "bg-white border-gray-100"
+          )}>
+             <div className={cn(
+               "px-6 py-4 border-b flex justify-between items-center z-10 shrink-0 transition-colors duration-500",
+               theme === 'dark' ? "bg-slate-800 border-slate-700" : "bg-gray-50 border-gray-100"
+             )}>
                <div className="flex items-start gap-4">
-                  <div className="mt-1 text-white">
+                  <div className={cn("mt-1", theme === 'dark' ? "text-white" : "text-blue-600")}>
                      <MessageSquare size={24} className="fill-current" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-black text-white tracking-widest">NOTEBOOK LM GUIDE</h3>
-                    <p className="text-xs font-medium text-gray-400 mt-1">온보딩 가이드 챗봇입니다. 무엇이든 물어보세요.</p>
+                    <h3 className={cn("text-lg font-black tracking-widest transition-colors", theme === 'dark' ? "text-white" : "text-gray-900")}>NOTEBOOK LM GUIDE</h3>
+                    <p className="text-xs font-medium text-gray-500 mt-1">온보딩 가이드 챗봇입니다. 무엇이든 물어보세요.</p>
                   </div>
                </div>
                <div className="flex items-center gap-3">
@@ -493,18 +542,18 @@ export const Onboarding = ({ user, members, setMembers }) => {
                </div>
              </div>
              
-             <div className="flex-1 overflow-y-auto p-8 space-y-6 flex flex-col bg-[#1a1f2e]">
+             <div className={cn("flex-1 overflow-y-auto p-8 space-y-6 flex flex-col transition-colors duration-500", theme === 'dark' ? "bg-slate-900" : "bg-white")}>
                 {chatMessages.map((msg, i) => (
                    <div key={i} className={cn("max-w-[75%] rounded-2xl p-5 text-sm font-medium leading-relaxed",
                       msg.role === 'user' ? "bg-blue-600 text-white self-end rounded-tr-sm shadow-sm" : 
                       msg.role === 'error' ? "bg-rose-500/20 text-rose-500 border border-rose-500/50 self-start" : 
-                      "bg-[#2a3040] text-gray-200 self-start rounded-tl-sm shadow-md whitespace-pre-wrap"
+                      (theme === 'dark' ? "bg-slate-800 text-slate-200 self-start rounded-tl-sm shadow-md whitespace-pre-wrap" : "bg-gray-100 text-gray-800 self-start rounded-tl-sm shadow-sm whitespace-pre-wrap")
                    )}>
                       {msg.text}
                    </div>
                 ))}
                 {isChatLoading && (
-                   <div className="bg-[#2a3040] w-20 rounded-2xl p-4 self-start rounded-tl-sm flex items-center justify-center gap-1.5 shadow-md">
+                   <div className={cn("w-20 rounded-2xl p-4 self-start rounded-tl-sm flex items-center justify-center gap-1.5 shadow-md", theme === 'dark' ? "bg-slate-800" : "bg-gray-100")}>
                       <div className="w-2 h-2 rounded-full bg-blue-500 animate-bounce" />
                       <div className="w-2 h-2 rounded-full bg-blue-500 animate-bounce [animation-delay:-0.15s]" />
                       <div className="w-2 h-2 rounded-full bg-blue-500 animate-bounce [animation-delay:-0.3s]" />
@@ -512,7 +561,7 @@ export const Onboarding = ({ user, members, setMembers }) => {
                 )}
              </div>
 
-             <div className="p-4 bg-[#232938] shrink-0 border-t border-gray-700">
+             <div className={cn("p-4 shrink-0 border-t transition-colors duration-500", theme === 'dark' ? "bg-slate-800 border-slate-700" : "bg-gray-50 border-gray-200")}>
                 <div className="relative flex items-center mx-auto max-w-4xl">
                    <input
                      value={chatInput}
@@ -520,7 +569,7 @@ export const Onboarding = ({ user, members, setMembers }) => {
                      onKeyDown={e => e.key === 'Enter' && handleSendChat()}
                      placeholder="질문을 입력하세요..."
                      disabled={isChatLoading}
-                     className="w-full p-4 pl-6 pr-16 bg-[#181c26] border border-gray-700 rounded-xl text-sm font-medium text-white placeholder-gray-500 outline-none focus:border-blue-500 transition-colors disabled:opacity-50 shadow-inner"
+                     className={cn("w-full p-4 pl-6 pr-16 rounded-xl text-sm font-medium outline-none border transition-colors disabled:opacity-50 shadow-inner", theme === 'dark' ? "bg-slate-900 border-slate-700 text-white placeholder-gray-500 focus:border-blue-500" : "bg-white border-gray-200 text-gray-900 placeholder-gray-400 focus:border-blue-500")}
                    />
                    <button 
                      onClick={handleSendChat}
@@ -536,6 +585,35 @@ export const Onboarding = ({ user, members, setMembers }) => {
 
         {/* EDUCATION TAB (Growth Sub-tab) */}
         {mainTab === 'growth' && subTab === 'edu' && (
+          <div className="lg:col-span-4 grid grid-cols-1 md:grid-cols-3 gap-6">
+            {[
+              { title: 'SW 아키텍처 기본', date: '2026-04-10', instructor: '김철수 책임', tag: '필수' },
+              { title: 'Modern C++ 핵심', date: '2026-04-15', instructor: '이영희 수석', tag: '심화' },
+              { title: 'AUTOSAR 실무', date: '2026-04-22', instructor: '박지성 팀장', tag: '전문' }
+            ].map((edu, idx) => (
+              <Card key={idx} theme={theme} className="hover:shadow-md transition-shadow">
+                <div className="flex flex-col h-full">
+                  <div className="flex justify-between items-start mb-4">
+                    <span className={cn(
+                      "px-2 py-1 text-[10px] font-bold rounded uppercase tracking-wider",
+                      theme === 'dark' ? "bg-blue-900/40 text-blue-400" : "bg-blue-50 text-blue-600"
+                    )}>{edu.tag}</span>
+                    <GraduationCap size={20} className="text-gray-400" />
+                  </div>
+                  <h3 className={cn(
+                    "text-lg font-bold mb-2",
+                    theme === 'dark' ? "text-slate-100" : "text-gray-900"
+                  )}>{edu.title}</h3>
+                  <div className={cn(
+                    "mt-auto pt-4 border-t flex justify-between items-center",
+                    theme === 'dark' ? "border-slate-800" : "border-gray-50"
+                  )}>
+                    <div className="text-xs text-gray-500">
+                      <p className="font-bold">{edu.instructor}</p>
+                      <p>{edu.date}</p>
+                    </div>
+                    <button className="text-xs font-bold text-blue-600 hover:underline">신청하기</button>
+
           <div className="lg:col-span-4 space-y-6">
             {/* Manager: Config & Add Training UI */}
             {(role === USER_ROLES.MANAGER || role === USER_ROLES.ADMIN) && (
@@ -688,8 +766,14 @@ export const Onboarding = ({ user, members, setMembers }) => {
         {/* CONFERENCE TAB (Growth Sub-tab) */}
         {mainTab === 'growth' && subTab === 'conf' && (
           <div className="lg:col-span-4 space-y-6">
-            <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
-              <div className="flex flex-col sm:flex-row justify-between items-center p-4 bg-gray-50/50 gap-4">
+            <div className={cn(
+              "border rounded-2xl shadow-sm overflow-hidden transition-colors duration-500",
+              theme === 'dark' ? "bg-slate-800 border-slate-700" : "bg-white border-gray-100"
+            )}>
+              <div className={cn(
+                "flex flex-col sm:flex-row justify-between items-center p-4 gap-4",
+                theme === 'dark' ? "bg-slate-800/50" : "bg-gray-50/50"
+              )}>
                 <div className="flex items-center gap-4">
                   <div className="flex bg-gray-100 p-1 rounded-xl border border-gray-200">
                     {[
@@ -857,7 +941,7 @@ export const Onboarding = ({ user, members, setMembers }) => {
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: cIdx * 0.1 }}
                   >
-                  <Card className="group hover:border-blue-200 hover:shadow-xl transition-all duration-300 overflow-hidden border-gray-100 p-6">
+                  <Card theme={theme} className="group hover:border-blue-200 hover:shadow-xl transition-all duration-300 overflow-hidden p-6">
                     <div className="flex gap-6 items-start">
                       {/* Date Icon */}
                       <div className="w-20 h-20 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl flex flex-col items-center justify-center text-white shrink-0 shadow-lg shadow-blue-200">
