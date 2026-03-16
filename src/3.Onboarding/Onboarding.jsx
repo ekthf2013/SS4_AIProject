@@ -96,12 +96,14 @@ export const Onboarding = ({ user, members, setMembers, addNotification, theme }
           mode: 'no-cors', // GAS simple POST
           body: JSON.stringify(payload)
         });
+        addNotification(`[교육] 새로운 교육 과정 "${newTraining.title}"이(가) 등록되었습니다.`);
         setTimeout(fetchTrainingFromSheets, 1000); // Wait for GAS sync
       } catch (err) {
         alert("시트 업데이트 중 오류가 발생했습니다.");
       }
     } else {
       setInternalTraining(prev => [...prev, payload]);
+      addNotification(`[교육] 새로운 교육 과정 "${newTraining.title}"이(가) 등록되었습니다.`);
     }
     
     setNewTraining({ title: '', date: '', instructor: '', tag: '일반' });
@@ -140,12 +142,21 @@ export const Onboarding = ({ user, members, setMembers, addNotification, theme }
   };
 
   const toggleCheck = (memberId, key, label) => {
+    // 1. 대상 멤버 찾기
+    const member = members.find(m => m.userId === memberId || m.id === memberId);
+    if (!member) return;
+
+    // 2. 완료 여부 판단
+    const isComplete = !member.progress[key];
+
+    // 3. 알림 전송 (매니저 계정만, 중복 방지를 위해 상태 업데이트 외부에서 실행)
+    if (isComplete && (role === USER_ROLES.MANAGER || role === USER_ROLES.ADMIN)) {
+      addNotification(`[온보딩] ${member.name}님이 "${label}" 항목을 완료했습니다!`);
+    }
+
+    // 4. 상태 업데이트
     setMembers(prev => prev.map(m => {
       if (m.userId === memberId || m.id === memberId) {
-        const isComplete = !m.progress[key];
-        if (isComplete) {
-          addNotification(`[온보딩] ${m.name}님이 "${label}" 항목을 완료했습니다!`);
-        }
         const newProgress = { ...m.progress, [key]: isComplete };
         // Recalculate total
         const values = Object.values(newProgress);
@@ -697,10 +708,13 @@ export const Onboarding = ({ user, members, setMembers, addNotification, theme }
               ) : (
                 <>
                   {internalTraining.map((edu) => (
-                    <Card key={edu.id} className="hover:shadow-md transition-shadow relative group">
+                    <Card key={edu.id} theme={theme} className="hover:shadow-md transition-shadow relative group">
                       <div className="flex flex-col h-full">
                         <div className="flex justify-between items-start mb-4">
-                          <span className="px-2 py-1 bg-blue-50 text-blue-600 text-[10px] font-bold rounded uppercase tracking-wider">{edu.tag}</span>
+                          <span className={cn(
+                            "px-2 py-1 text-[10px] font-bold rounded uppercase tracking-wider",
+                            theme === 'dark' ? "bg-blue-900/40 text-blue-400" : "bg-blue-50 text-blue-600"
+                          )}>{edu.tag}</span>
                           <div className="flex items-center gap-2">
                             {(role === USER_ROLES.MANAGER || role === USER_ROLES.ADMIN) && (
                               <button 
@@ -714,8 +728,14 @@ export const Onboarding = ({ user, members, setMembers, addNotification, theme }
                             <GraduationCap size={20} className="text-gray-300" />
                           </div>
                         </div>
-                        <h3 className="text-lg font-bold text-gray-900 mb-2">{edu.title || edu.Title || '소속/교육명 없음'}</h3>
-                        <div className="mt-auto pt-4 border-t border-gray-50 flex justify-between items-center">
+                        <h3 className={cn(
+                          "text-lg font-bold mb-2",
+                          theme === 'dark' ? "text-slate-100" : "text-gray-900"
+                        )}>{edu.title || edu.Title || '소속/교육명 없음'}</h3>
+                        <div className={cn(
+                          "mt-auto pt-4 border-t flex justify-between items-center",
+                          theme === 'dark' ? "border-slate-800" : "border-gray-50"
+                        )}>
                           <div className="text-xs text-gray-500">
                             <p className="font-bold">{edu.instructor || edu.Instructor || '강사 미지정'}</p>
                             <p>{edu.date ? (new Date(edu.date).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })) : '일정 미정'}</p>
@@ -726,7 +746,10 @@ export const Onboarding = ({ user, members, setMembers, addNotification, theme }
                     </Card>
                   ))}
                   {internalTraining.length === 0 && (
-                    <div className="col-span-1 md:col-span-3 py-20 flex flex-col items-center justify-center bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
+                    <div className={cn(
+                      "col-span-1 md:col-span-3 py-20 flex flex-col items-center justify-center rounded-2xl border border-dashed",
+                      theme === 'dark' ? "bg-slate-800/20 border-slate-700" : "bg-gray-50/50 border-gray-200"
+                    )}>
                       <GraduationCap size={48} className="text-gray-300 mb-4" />
                       <p className="text-sm font-bold text-gray-400">등록된 교육 과정이 없습니다.</p>
                     </div>
@@ -750,7 +773,10 @@ export const Onboarding = ({ user, members, setMembers, addNotification, theme }
                 theme === 'dark' ? "bg-slate-800/50" : "bg-gray-50/50"
               )}>
                 <div className="flex items-center gap-4">
-                  <div className="flex bg-gray-100 p-1 rounded-xl border border-gray-200">
+                  <div className={cn(
+                    "flex p-1 rounded-xl border transition-colors",
+                    theme === 'dark' ? "bg-slate-900 border-slate-700" : "bg-gray-100 border-gray-200"
+                  )}>
                     {[
                       { id: 'domestic', label: '국내 행사' },
                       { id: 'global', label: '해외 행사' }
@@ -761,7 +787,7 @@ export const Onboarding = ({ user, members, setMembers, addNotification, theme }
                         className={cn(
                           "px-4 py-1.5 rounded-lg text-xs font-black transition-all",
                           conferenceTypeTab === tab.id 
-                            ? "bg-white text-blue-600 shadow-sm" 
+                            ? (theme === 'dark' ? "bg-slate-700 text-blue-400 shadow-sm" : "bg-white text-blue-600 shadow-sm") 
                             : "text-gray-500 hover:text-gray-800"
                         )}
                       >
@@ -775,7 +801,9 @@ export const Onboarding = ({ user, members, setMembers, addNotification, theme }
                       onClick={() => setIsFilterExpanded(!isFilterExpanded)}
                       className={cn(
                         "flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border",
-                        isFilterExpanded ? "bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-200" : "bg-white border-gray-200 text-gray-500 hover:border-gray-300"
+                        isFilterExpanded 
+                          ? "bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-200" 
+                          : (theme === 'dark' ? "bg-slate-900 border-slate-700 text-slate-400 hover:border-slate-500" : "bg-white border-gray-200 text-gray-500 hover:border-gray-300")
                       )}
                     >
                       <Filter size={14} />
@@ -821,6 +849,7 @@ export const Onboarding = ({ user, members, setMembers, addNotification, theme }
                         now.getFullYear()
                       );
                       setLiveConferences(newData);
+                      addNotification(`[컨퍼런스] 최신 컨퍼런스 데이터 ${newData.length}건이 동기화되었습니다.`);
                       alert("실시간 검색 및 AI 정제가 완료되었습니다!");
                     } catch (err) {
                       console.error("Refresh Error:", err);
@@ -845,7 +874,10 @@ export const Onboarding = ({ user, members, setMembers, addNotification, theme }
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: 'auto', opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
-                    className="border-t border-gray-50 bg-white"
+                    className={cn(
+                      "border-t transition-colors",
+                      theme === 'dark' ? "bg-slate-900 border-slate-700" : "bg-white border-gray-50"
+                    )}
                   >
                     <div className="p-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
                       <button
@@ -853,8 +885,8 @@ export const Onboarding = ({ user, members, setMembers, addNotification, theme }
                         className={cn(
                           "flex items-center justify-center p-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border",
                           selectedConferenceTags.length === 0 
-                            ? "bg-blue-50 border-blue-200 text-blue-600" 
-                            : "bg-white border-gray-100 text-gray-400 hover:border-gray-200"
+                            ? (theme === 'dark' ? "bg-blue-900/40 border-blue-800 text-blue-400" : "bg-blue-50 border-blue-200 text-blue-600") 
+                            : (theme === 'dark' ? "bg-slate-800 border-slate-700 text-slate-500 hover:border-slate-500" : "bg-white border-gray-100 text-gray-400 hover:border-gray-200")
                         )}
                       >
                         ALL
@@ -869,7 +901,7 @@ export const Onboarding = ({ user, members, setMembers, addNotification, theme }
                               "flex items-center justify-center p-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border",
                               isSelected 
                                 ? "bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-200" 
-                                : "bg-white border-gray-100 text-gray-400 hover:border-gray-200 hover:text-gray-600"
+                                : (theme === 'dark' ? "bg-slate-800 border-slate-700 text-slate-500 hover:border-slate-600 hover:text-slate-300" : "bg-white border-gray-100 text-gray-400 hover:border-gray-200 hover:text-gray-600")
                             )}
                           >
                             {tag}
@@ -896,7 +928,10 @@ export const Onboarding = ({ user, members, setMembers, addNotification, theme }
 
                 if (filtered.length === 0) {
                   return (
-                    <div className="col-span-1 md:col-span-2 py-20 flex flex-col items-center justify-center bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
+                    <div className={cn(
+                      "col-span-1 md:col-span-2 py-20 flex flex-col items-center justify-center rounded-2xl border border-dashed",
+                      theme === 'dark' ? "bg-slate-800/20 border-slate-700" : "bg-gray-50/50 border-gray-200"
+                    )}>
                       <Calendar size={48} className="text-gray-300 mb-4" />
                       <p className="text-sm font-bold text-gray-400">일치하는 행사 정보가 없습니다.</p>
                       <button 
@@ -929,28 +964,45 @@ export const Onboarding = ({ user, members, setMembers, addNotification, theme }
                         <div className="flex justify-between items-start gap-4 mb-2">
                           <div className="flex flex-wrap gap-2">
                             {conf.tags.map(tag => (
-                              <span key={tag} className="text-[8px] font-black uppercase tracking-widest bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">{tag}</span>
+                              <span key={tag} className={cn(
+                                "text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full transition-colors",
+                                theme === 'dark' ? "bg-slate-800 text-slate-400" : "bg-gray-100 text-gray-500"
+                              )}>{tag}</span>
                             ))}
                           </div>
                           <a 
                             href={conf.link} 
                             target="_blank" 
                             rel="noreferrer" 
-                            className="shrink-0 p-2 bg-gray-50 text-gray-400 rounded-xl hover:bg-blue-50 hover:text-blue-600 transition-all border border-transparent hover:border-blue-100"
+                            className={cn(
+                              "shrink-0 p-2 rounded-xl transition-all border border-transparent",
+                              theme === 'dark' 
+                                ? "bg-slate-800 text-slate-500 hover:bg-slate-700 hover:text-slate-200 hover:border-slate-600" 
+                                : "bg-gray-50 text-gray-400 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-100"
+                            )}
                             title="홈페이지 방문"
                           >
                             <ExternalLink size={14} />
                           </a>
                         </div>
 
-                        <h3 className="text-lg font-black text-gray-900 mb-2 leading-tight group-hover:text-blue-600 transition-colors uppercase tracking-tight truncate">
+                        <h3 className={cn(
+                          "text-lg font-black mb-2 leading-tight group-hover:text-blue-600 transition-colors uppercase tracking-tight truncate",
+                          theme === 'dark' ? "text-slate-100" : "text-gray-900"
+                        )}>
                           {conf.title}
                         </h3>
-                        <p className="text-sm font-medium text-gray-500 mb-4 line-clamp-2 leading-relaxed">
+                        <p className={cn(
+                          "text-sm font-medium mb-4 line-clamp-2 leading-relaxed transition-colors",
+                          theme === 'dark' ? "text-slate-400" : "text-gray-500"
+                        )}>
                           {conf.desc}
                         </p>
                         
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-4 text-xs font-bold text-gray-400 border-t border-gray-50 pt-4">
+                        <div className={cn(
+                          "flex flex-col sm:flex-row sm:items-center gap-4 text-xs font-bold border-t pt-4 transition-colors",
+                          theme === 'dark' ? "text-slate-500 border-slate-800" : "text-gray-400 border-gray-50"
+                        )}>
                           <span className="flex items-center gap-1.5"><MapPin size={14} className="text-blue-500/50" /> {conf.location}</span>
                           <span className="flex items-center gap-1.5"><Calendar size={14} className="text-blue-500/50" /> {conf.date}</span>
                         </div>
