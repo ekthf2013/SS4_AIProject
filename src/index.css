@@ -60,3 +60,9 @@
 .animate-pulse-blue {
   animation: pulse-blue 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
+
+/* Hide default browser password reveal and clear buttons */
+input::-ms-reveal,
+input::-ms-clear {
+  display: none;
+}
