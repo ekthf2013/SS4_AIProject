@@ -38,6 +38,7 @@ import { KnowledgeBase } from '../4.KnowledgeBase/KnowledgeBase';
 import { Apps } from '../5.Apps/Apps';
 import { SettingsPage } from '../6.Settings/SettingsPage';
 import logo from '../assets/logo.png';
+import logoDark from '../assets/logo_dark.png';
 
 const MainAppContent = () => {
   const { lang, setLang, t } = useTranslation();
@@ -158,11 +159,12 @@ const MainAppContent = () => {
               onClick={() => setActiveTab('dashboard')}
               className="px-5 mb-8 cursor-pointer hover:opacity-80 transition-opacity"
             >
-              <div className={cn(
-                "py-2 px-2 rounded-xl w-full flex justify-center transition-colors",
-                theme === 'dark' ? "bg-white shadow-sm" : ""
-              )}>
-                <img src={logo} alt="Suresoft Logo" className="h-[4.5rem] object-contain" />
+              <div className="py-2 px-2 rounded-xl w-full flex justify-center transition-colors">
+                <img 
+                  src={theme === 'dark' ? logoDark : logo} 
+                  alt="Suresoft Logo" 
+                  className="h-[4.5rem] object-contain" 
+                />
               </div>
             </div>
 
@@ -369,7 +371,7 @@ const MainAppContent = () => {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
                 >
-                   {activeTab === 'dashboard' && <Dashboard user={user} theme={theme} />}
+                   {activeTab === 'dashboard' && <Dashboard user={user} theme={theme} members={members} />}
                   {activeTab === 'onboarding' && (
                     <Onboarding
                       user={user}

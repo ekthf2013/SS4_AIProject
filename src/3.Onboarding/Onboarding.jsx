@@ -13,6 +13,7 @@ export const Onboarding = ({ user, members, setMembers, addNotification, theme }
   const [subTab, setSubTab] = useState('my'); // 'my', 'dept' for onboarding, 'edu', 'conf' for growth
   
   const [selectedMember, setSelectedMember] = useState(null);
+  const [selectedStatGroupIdx, setSelectedStatGroupIdx] = useState(null);
 
   const viewType = (mainTab === 'onboarding' && subTab === 'dept') ? 'dept' : 'my';
 
@@ -172,6 +173,28 @@ export const Onboarding = ({ user, members, setMembers, addNotification, theme }
     // If manager/admin looking at dept, filter by their team
     return members.filter(m => m.dept === user?.team && m.userId !== user?.id);
   }, [members, viewType, user]);
+
+  const teamStats = useMemo(() => {
+    if (viewType !== 'dept' || filteredMembers.length === 0) return null;
+    
+    const count = filteredMembers.length;
+    const avg = Math.round(filteredMembers.reduce((acc, m) => acc + (m.total || 0), 0) / count);
+    const completed = filteredMembers.filter(m => m.total === 100).length;
+    
+    // Calculate category-specific avg
+    const catAverages = CHECKLIST_CONFIG.map(group => {
+      const groupProgress = filteredMembers.reduce((acc, m) => {
+        const doneCount = group.items.filter(item => m.progress?.[item.id]).length;
+        return acc + (doneCount / group.items.length);
+      }, 0);
+      return { 
+        name: group.category, 
+        avg: Math.round((groupProgress / count) * 100) 
+      };
+    });
+
+    return { count, avg, completed, catAverages };
+  }, [filteredMembers, viewType]);
 
   useEffect(() => {
     if (viewType === 'my') setSelectedMember(members.find(m => m.userId === user?.id));
@@ -359,7 +382,7 @@ export const Onboarding = ({ user, members, setMembers, addNotification, theme }
                 {filteredMembers.map(m => (
                   <button
                     key={m.id}
-                    onClick={() => setSelectedMember(m)}
+                    onClick={() => setSelectedMember(selectedMember?.id === m.id ? null : m)}
                     className={cn(
                       "w-full text-left p-3 rounded-2xl border transition-all flex items-center gap-3",
                       selectedMember?.id === m.id 
@@ -385,9 +408,144 @@ export const Onboarding = ({ user, members, setMembers, addNotification, theme }
             {/* Content Area */}
             <div className={cn("space-y-6", viewType === 'dept' ? "lg:col-span-3" : "lg:col-span-4")}>
               {(!selectedMember && viewType === 'dept') ? (
-                <div className="h-full min-h-[400px] flex flex-col items-center justify-center bg-gray-50 rounded-2xl border border-gray-100 border-dashed">
-                  <Users size={48} className="text-gray-300 mb-4" />
-                  <p className="text-sm font-bold text-gray-500">부서 인원을 선택하여 현황을 확인하세요.</p>
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <Card theme={theme}>
+                      <div className="flex flex-col items-center justify-center p-4">
+                        <Users size={32} className="text-blue-500 mb-2" />
+                        <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">{t('total_members') || '전체 팀원'}</p>
+                        <p className={cn(
+                          "text-3xl font-black mt-1",
+                          theme === 'dark' ? "text-slate-100" : "text-gray-900"
+                        )}>{teamStats?.count}명</p>
+                      </div>
+                    </Card>
+                    <Card theme={theme}>
+                      <div className="flex flex-col items-center justify-center p-4">
+                        <TrendingUp size={32} className="text-green-500 mb-2" />
+                        <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">{t('avg_progress') || '평균 진척률'}</p>
+                        <p className={cn(
+                          "text-3xl font-black mt-1",
+                          theme === 'dark' ? "text-slate-100" : "text-gray-900"
+                        )}>{teamStats?.avg}%</p>
+                      </div>
+                    </Card>
+                    <Card theme={theme}>
+                      <div className="flex flex-col items-center justify-center p-4">
+                        <CheckCircle2 size={32} className="text-indigo-500 mb-2" />
+                        <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">{t('completed_members') || '완료 인원'}</p>
+                        <p className={cn(
+                          "text-3xl font-black mt-1",
+                          theme === 'dark' ? "text-slate-100" : "text-gray-900"
+                        )}>{teamStats?.completed}명</p>
+                      </div>
+                    </Card>
+                  </div>
+
+                  <Card title="카테고리별 온보딩 현황" theme={theme}>
+                    <div className="space-y-6">
+                      {teamStats?.catAverages.map((cat, idx) => (
+                        <div key={idx} className="space-y-3">
+                          <button 
+                            onClick={() => setSelectedStatGroupIdx(selectedStatGroupIdx === idx ? null : idx)}
+                            className="w-full text-left outline-none group"
+                          >
+                            <div className="flex justify-between items-center px-1 mb-2">
+                              <span className={cn(
+                                "text-xs font-black uppercase tracking-wider transition-colors",
+                                selectedStatGroupIdx === idx ? "text-blue-600" : (theme === 'dark' ? "text-slate-300 group-hover:text-blue-400" : "text-gray-600 group-hover:text-blue-600")
+                              )}>{cat.name}</span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-bold text-gray-400">{selectedStatGroupIdx === idx ? '접기' : '자세히 보기'}</span>
+                                <span className="text-xs font-black text-blue-600">{cat.avg}%</span>
+                              </div>
+                            </div>
+                            <div className={cn(
+                              "h-2.5 rounded-full overflow-hidden transition-all",
+                              theme === 'dark' ? "bg-slate-800" : "bg-gray-100",
+                              selectedStatGroupIdx === idx && "ring-2 ring-blue-600/20"
+                            )}>
+                              <motion.div 
+                                initial={{ width: 0 }}
+                                animate={{ width: `${cat.avg}%` }}
+                                className="h-full bg-blue-600 rounded-full shadow-sm"
+                              />
+                            </div>
+                          </button>
+
+                          {/* INCOMPLETE PERSONNEL LIST FOR SELECTED CATEGORY */}
+                          <AnimatePresence>
+                            {selectedStatGroupIdx === idx && (
+                              <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: 'auto', opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                className="overflow-hidden"
+                              >
+                                <div className={cn(
+                                  "mt-2 p-4 rounded-2xl space-y-4 border transition-colors",
+                                  theme === 'dark' ? "bg-slate-900 border-slate-700" : "bg-gray-50 border-gray-200"
+                                )}>
+                                  {CHECKLIST_CONFIG[idx].items.map(item => {
+                                    const incompletePeople = filteredMembers.filter(m => !m.progress?.[item.id]);
+                                    return (
+                                      <div key={item.id} className="space-y-2">
+                                        <div className="flex items-center gap-2">
+                                          <div className="w-1 h-1 rounded-full bg-blue-500" />
+                                          <span className={cn(
+                                            "text-xs font-bold",
+                                            theme === 'dark' ? "text-slate-200" : "text-gray-700"
+                                          )}>{item.label}</span>
+                                          <span className="text-[10px] font-bold text-rose-500 bg-rose-500/10 px-1.5 py-0.5 rounded-md ml-auto">
+                                            미완료 {incompletePeople.length}명
+                                          </span>
+                                        </div>
+                                        <div className="flex flex-wrap gap-2 pl-3">
+                                          {incompletePeople.length > 0 ? (
+                                            incompletePeople.map(person => (
+                                              <div 
+                                                key={person.id} 
+                                                className={cn(
+                                                  "px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1.5 border",
+                                                  theme === 'dark' ? "bg-slate-800 border-slate-700 text-slate-300" : "bg-white border-gray-100 text-gray-500"
+                                                )}
+                                              >
+                                                <div className="w-4 h-4 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[8px]">
+                                                  {person.name.charAt(0)}
+                                                </div>
+                                                {person.name}
+                                              </div>
+                                            ))
+                                          ) : (
+                                            <p className="text-[10px] text-gray-400 italic pl-1">모두 완료했습니다! ✨</p>
+                                          )}
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      ))}
+                    </div>
+                  </Card>
+                  
+                  <div className={cn(
+                    "p-6 rounded-3xl border border-dashed flex items-center justify-center gap-4 transition-colors",
+                    theme === 'dark' ? "bg-slate-800/30 border-slate-700" : "bg-blue-50/50 border-blue-100"
+                  )}>
+                    <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white shrink-0">
+                      <BarChart2 size={20} />
+                    </div>
+                    <p className={cn(
+                      "text-sm font-bold",
+                      theme === 'dark' ? "text-slate-400" : "text-gray-600"
+                    )}>
+                      왼쪽 리스트에서 특정 팀원을 선택하면 상세 체크리스트를 확인하고 관리할 수 있습니다.
+                    </p>
+                  </div>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
