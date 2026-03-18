@@ -411,7 +411,7 @@ const MainAppContent = () => {
                   )}
                   {activeTab === 'knowledge' && <KnowledgeBase theme={theme} />}
                   {activeTab === 'apps' && <Apps user={user} addNotification={addNotification} theme={theme} />}
-                  {activeTab === 'settings' && <SettingsPage user={user} theme={theme} toggleTheme={toggleTheme} />}
+                  {activeTab === 'settings' && <SettingsPage user={user} theme={theme} toggleTheme={toggleTheme} onLogout={() => setUser(null)} />}
                 </motion.div>
               </AnimatePresence>
             </main>

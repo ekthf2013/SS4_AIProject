@@ -1,11 +1,11 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { User, CheckCircle2 } from 'lucide-react';
+import { User, CheckCircle2, LogOut } from 'lucide-react';
 import { useTranslation } from '../shared/Translations';
 import { PremiumPage, SectionHeader, Card } from '../shared/SharedComponents';
 import { cn } from '../shared/utils';
 
-export const SettingsPage = ({ user, theme, toggleTheme }) => {
+export const SettingsPage = ({ user, theme, toggleTheme, onLogout }) => {
   const { t } = useTranslation();
   const isDark = theme === 'dark';
 
@@ -32,7 +32,16 @@ export const SettingsPage = ({ user, theme, toggleTheme }) => {
                 isDark ? "text-slate-100" : "text-gray-900"
               )}>{user?.name || '사용자'}</h4>
               <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mt-1">{user?.team} | {user?.position}</p>
-              <button className="mt-4 text-[10px] font-bold text-blue-600 hover:text-blue-700 underline border-none outline-none transition-colors">{t('edit_sig')}</button>
+              <div className="flex gap-4 items-center">
+                <button className="mt-4 text-[10px] font-bold text-blue-600 hover:text-blue-700 underline border-none outline-none transition-colors">{t('edit_sig')}</button>
+                <button 
+                  onClick={onLogout}
+                  className="mt-4 flex items-center gap-1.5 text-[10px] font-bold text-rose-500 hover:text-rose-600 underline border-none outline-none transition-colors"
+                >
+                  <LogOut size={12} />
+                  {t('logout')}
+                </button>
+              </div>
             </div>
           </div>
           <div className="space-y-4">

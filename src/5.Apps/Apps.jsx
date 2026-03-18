@@ -16,7 +16,7 @@ export const Apps = ({ user, addNotification, theme }) => {
   const [isPollActive, setIsPollActive] = useState(false);
   const [departure, setDeparture] = useState('');
   const [destination, setDestination] = useState('회사');
-  const [departureTime, setDepartureTime] = useState('08:30');
+  const [departureTime, setDepartureTime] = useState('07:00');
   const [commuteMode, setCommuteMode] = useState('toWork'); // 'toWork' or 'toHome'
   const [path, setPath] = useState(null);
 
@@ -183,7 +183,7 @@ export const Apps = ({ user, addNotification, theme }) => {
   return (
     <PremiumPage theme={theme}>
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
-        <SectionHeader title={t('team_apps')} subtitle={t('apps_sub')} />
+        <SectionHeader title={t('team_apps')} subtitle={t('apps_sub')} theme={theme} />
         <div className="flex flex-col items-end gap-3">
           {(user.role === 'admin' || user.role === 'manager') && (
             <button 
@@ -282,7 +282,10 @@ export const Apps = ({ user, addNotification, theme }) => {
                         <Utensils size={24} />
                       </div>
                       <div className="flex-1">
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{shop?.cat || '기타'}</p>
+                        <p className={cn(
+                          "text-[10px] font-bold uppercase tracking-widest",
+                          theme === 'dark' ? "text-slate-500" : "text-gray-400"
+                        )}>{shop?.cat || '기타'}</p>
                         <p className={cn(
                           "text-sm font-bold mt-0.5",
                           theme === 'dark' ? "text-slate-100" : "text-gray-900"
@@ -294,7 +297,10 @@ export const Apps = ({ user, addNotification, theme }) => {
                     </div>
                   ))
                 ) : !isShopsLoading && (
-                  <div className="py-10 text-center text-gray-400 text-xs font-bold">등록된 식당이 없습니다.</div>
+                  <div className={cn(
+                    "py-10 text-center text-xs font-bold",
+                    theme === 'dark' ? "text-slate-500" : "text-gray-400"
+                  )}>등록된 식당이 없습니다.</div>
                 )}
               </div>
               <div className={cn(
@@ -394,7 +400,10 @@ export const Apps = ({ user, addNotification, theme }) => {
 
               <div className="space-y-4">
                 <div className="space-y-1.5">
-                  <p className="text-xs font-bold text-gray-500 uppercase tracking-widest pl-1">출발지</p>
+                  <p className={cn(
+                    "text-xs font-bold uppercase tracking-widest pl-1",
+                    theme === 'dark' ? "text-slate-400" : "text-gray-500"
+                  )}>출발지</p>
                   <input
                     type="text"
                     value={departure}
@@ -410,7 +419,10 @@ export const Apps = ({ user, addNotification, theme }) => {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <p className="text-xs font-bold text-gray-500 uppercase tracking-widest pl-1">도착지</p>
+                  <p className={cn(
+                    "text-xs font-bold uppercase tracking-widest pl-1",
+                    theme === 'dark' ? "text-slate-400" : "text-gray-500"
+                  )}>도착지</p>
                   <input
                     type="text"
                     value={destination}
@@ -426,7 +438,10 @@ export const Apps = ({ user, addNotification, theme }) => {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <p className="text-xs font-bold text-gray-500 uppercase tracking-widest pl-1">출발 시간 (24H)</p>
+                  <p className={cn(
+                    "text-xs font-bold uppercase tracking-widest pl-1",
+                    theme === 'dark' ? "text-slate-400" : "text-gray-500"
+                  )}>출발 시간 (24H)</p>
                   <div className="flex gap-3">
                     <div className="flex-1 relative group">
                       <select 
@@ -523,7 +538,7 @@ export const Apps = ({ user, addNotification, theme }) => {
                                     </div>
                                     <p className={cn(
                                       "text-sm font-bold leading-relaxed pt-1 flex-1",
-                                      theme === 'dark' ? "text-slate-300" : "text-gray-700"
+                                      theme === 'dark' ? "text-slate-100" : "text-gray-700"
                                     )}>{step}</p>
                                     {si < route.steps.length - 1 && (
                                       <div className="absolute left-[17px] top-[34px] w-[2px] h-[30px] bg-gray-100" />
@@ -600,7 +615,10 @@ export const Apps = ({ user, addNotification, theme }) => {
                     "text-3xl font-black mb-3",
                     theme === 'dark' ? "text-slate-100" : "text-gray-900"
                   )}>새로운 투표 주제를 정해주세요</h3>
-                  <p className="text-xs font-bold text-gray-500 tracking-widest uppercase">질문과 항목을 구성하여 투표를 시작하세요</p>
+                  <p className={cn(
+                    "text-xs font-bold tracking-widest uppercase",
+                    theme === 'dark' ? "text-slate-400" : "text-gray-500"
+                  )}>질문과 항목을 구성하여 투표를 시작하세요</p>
                 </div>
 
                 <div className="space-y-6">
@@ -618,7 +636,10 @@ export const Apps = ({ user, addNotification, theme }) => {
                   </div>
 
                   <div className="space-y-4">
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 ml-1">투표 항목 ({pollOptions.length})</label>
+                    <label className={cn(
+                      "block text-[10px] font-black uppercase tracking-widest mb-2 ml-1",
+                      theme === 'dark' ? "text-slate-400" : "text-gray-400"
+                    )}>투표 항목 ({pollOptions.length})</label>
                     <div className="flex gap-2">
                       <input
                         value={newOption}
@@ -698,7 +719,10 @@ export const Apps = ({ user, addNotification, theme }) => {
                             "text-lg font-bold uppercase transition-colors duration-500",
                             theme === 'dark' ? "text-slate-200" : "text-gray-900"
                           )}>{key}</span>
-                          <span className="text-sm font-bold text-gray-500">{percentage}% ({count})</span>
+                          <span className={cn(
+                            "text-sm font-bold",
+                            theme === 'dark' ? "text-slate-400" : "text-gray-500"
+                          )}>{percentage}% ({count})</span>
                         </div>
                         <div className={cn(
                           "relative h-6 rounded-2xl overflow-hidden cursor-pointer group transition-all",
@@ -766,7 +790,10 @@ export const Apps = ({ user, addNotification, theme }) => {
                     "text-2xl font-black mb-1",
                     theme === 'dark' ? "text-slate-100" : "text-gray-900"
                   )}>{selectedShop.name}</h3>
-                  <p className="text-xs font-bold text-gray-500 tracking-widest uppercase">
+                  <p className={cn(
+                    "text-xs font-bold tracking-widest uppercase",
+                    theme === 'dark' ? "text-slate-400" : "text-gray-500"
+                  )}>
                     <span className="text-blue-600">{selectedShop.cat}</span> &bull; ★{getDisplayRating(selectedShop)}
                     {selectedShop.addedBy ? ` \u2022 By ${selectedShop.addedBy}` : ''}
                   </p>
@@ -782,14 +809,20 @@ export const Apps = ({ user, addNotification, theme }) => {
                 "space-y-5 pt-6 border-t",
                 theme === 'dark' ? "border-slate-800" : "border-gray-100"
               )}>
-                <h4 className="text-xs font-bold text-gray-500 uppercase tracking-widest">Reviews</h4>
+                <h4 className={cn(
+                  "text-xs font-bold uppercase tracking-widest",
+                  theme === 'dark' ? "text-slate-400" : "text-gray-500"
+                )}>Reviews</h4>
                 <div className="max-h-40 overflow-y-auto space-y-3 pr-2">
                   {Array.isArray(selectedShop?.reviews) && selectedShop.reviews.map((rv, i) => (
                     <div key={i} className={cn(
                       "p-4 rounded-xl border shadow-sm",
                       theme === 'dark' ? "bg-slate-800 border-slate-700" : "bg-white border-gray-200"
                     )}>
-                      <p className="text-[10px] font-bold text-gray-400 mb-1.5 tracking-wider">{rv?.user || 'Unknown'} <span className="text-yellow-500">★{rv?.rating || '0.0'}</span></p>
+                      <p className={cn(
+                        "text-[10px] font-bold mb-1.5 tracking-wider",
+                        theme === 'dark' ? "text-slate-500" : "text-gray-400"
+                      )}>{rv?.user || 'Unknown'} <span className="text-yellow-500">★{rv?.rating || '0.0'}</span></p>
                       <p className={cn(
                         "text-sm font-medium",
                         theme === 'dark' ? "text-slate-200" : "text-gray-800"
@@ -850,7 +883,15 @@ export const Apps = ({ user, addNotification, theme }) => {
               </div>
 
               {selectedShop.addedBy === user.id && (
-                <button onClick={() => handleDeleteRestaurant(selectedShop.id)} className="w-full mt-6 py-4 bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 rounded-xl font-bold tracking-widest transition-colors flex items-center justify-center gap-2"><Trash2 size={18} /> 이 식당 목록에서 삭제</button>
+                <button 
+                  onClick={() => handleDeleteRestaurant(selectedShop.id)} 
+                  className={cn(
+                    "w-full mt-6 py-4 border rounded-xl font-bold tracking-widest transition-colors flex items-center justify-center gap-2",
+                    theme === 'dark' ? "bg-red-900/20 border-red-900/50 text-red-400 hover:bg-red-900/30" : "bg-red-50 border-red-200 text-red-600 hover:bg-red-100"
+                  )}
+                >
+                  <Trash2 size={18} /> 이 식당 목록에서 삭제
+                </button>
               )}
             </motion.div>
           </motion.div>

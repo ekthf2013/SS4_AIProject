@@ -17,19 +17,25 @@ export const PremiumPage = ({ children, theme }) => (
 );
 
 // Section Header - Updated for Theme support
-export const SectionHeader = ({ title, subtitle, theme }) => (
-  <div className="mb-6">
-    <h1 className={cn(
-      "text-3xl font-bold mb-1 transition-colors duration-500",
-      theme === 'dark' ? "text-slate-100" : "text-gray-900"
-    )}>
-      {title}
-    </h1>
-    <p className="text-sm font-medium text-gray-500">
-      {subtitle}
-    </p>
-  </div>
-);
+export const SectionHeader = ({ title, subtitle, theme }) => {
+  const isDark = theme === 'dark';
+  return (
+    <div className="mb-6">
+      <h1 className={cn(
+        "text-3xl font-bold mb-1 transition-colors duration-500",
+        isDark ? "text-slate-100" : "text-gray-900"
+      )}>
+        {title}
+      </h1>
+      <p className={cn(
+        "text-sm font-medium transition-colors duration-500",
+        isDark ? "text-slate-400" : "text-gray-500"
+      )}>
+        {subtitle}
+      </p>
+    </div>
+  );
+};
 
 // Premium Card - Updated for Theme support
 export const Card = ({ children, className, title, theme }) => (
