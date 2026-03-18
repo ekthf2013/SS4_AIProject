@@ -54,8 +54,8 @@ export const CHECKLIST_CONFIG = [
   {
     category: "보조 프로그램 설치 (선택)",
     items: [
-      { id: "notepad", label: "notepad++" },
-      { id: "bandizip", label: "반디집" },
+      { id: "notepad", label: "notepad++ 설치" },
+      { id: "bandizip", label: "반디집 설치" },
     ]
   },
   {
