@@ -144,21 +144,23 @@ export const Onboarding = ({ user, members, setMembers, addNotification, theme }
 
   const toggleCheck = (memberId, key, label) => {
     // 1. 대상 멤버 찾기
-    const member = members.find(m => m.userId === memberId || m.id === memberId);
-    if (!member) return;
+    const targetMember = members.find(m => m.userId === memberId || m.id === memberId);
+    if (!targetMember) return;
 
-    // 2. 완료 여부 판단
-    const isComplete = !member.progress[key];
+    // 2. 완료 여부 판단 (이미 완료된 상태면 반전시키므로, !targetMember.progress[key] 가 true면 새로 완료하는 것)
+    const wasComplete = !!targetMember.progress[key];
+    const isNowComplete = !wasComplete;
 
-    // 3. 알림 전송 (매니저 계정만, 중복 방지를 위해 상태 업데이트 외부에서 실행)
-    if (isComplete && (role === USER_ROLES.MANAGER || role === USER_ROLES.ADMIN)) {
-      addNotification(`[온보딩] ${member.name}님이 "${label}" 항목을 완료했습니다!`);
+    // 3. 알림 전송 (새로 완료했을 때만 + 매니저 계정만)
+    // 중복 방지를 위해 상태 업데이트와 별개로 한 번만 실행되도록 보장
+    if (isNowComplete && (role === USER_ROLES.MANAGER || role === USER_ROLES.ADMIN)) {
+      addNotification(`[온보딩] ${targetMember.name}님이 "${label}" 항목을 완료했습니다!`);
     }
 
     // 4. 상태 업데이트
     setMembers(prev => prev.map(m => {
       if (m.userId === memberId || m.id === memberId) {
-        const newProgress = { ...m.progress, [key]: isComplete };
+        const newProgress = { ...m.progress, [key]: isNowComplete };
         // Recalculate total
         const values = Object.values(newProgress);
         const newTotal = Math.round((values.filter(v => v).length / values.length) * 100);

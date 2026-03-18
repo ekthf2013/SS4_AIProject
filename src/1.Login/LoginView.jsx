@@ -8,7 +8,8 @@ import {
   EyeOff,
   LogOut,
   CheckCircle2,
-  LockKeyhole
+  LockKeyhole,
+  RotateCw
 } from 'lucide-react';
 import { useTranslation } from '../shared/Translations';
 import { USER_ACCOUNTS } from '../shared/MockData';
@@ -22,16 +23,25 @@ export const LoginView = ({ onLogin }) => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [keepSession, setKeepSession] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const foundUser = USER_ACCOUNTS.find(acc => acc.id === userId.toLowerCase() && acc.pw === password);
+    if (isLoading) return;
 
-    if (foundUser) {
-      onLogin(foundUser);
-    } else {
-      alert('아이디 또는 비밀번호가 올바르지 않습니다.');
-    }
+    setIsLoading(true);
+
+    // Simulate login loading delay
+    setTimeout(() => {
+      const foundUser = USER_ACCOUNTS.find(acc => acc.id === userId.toLowerCase() && acc.pw === password);
+
+      if (foundUser) {
+        onLogin(foundUser);
+      } else {
+        alert('아이디 또는 비밀번호가 올바르지 않습니다.');
+        setIsLoading(false);
+      }
+    }, 500);
   };
 
   return (
@@ -177,10 +187,25 @@ export const LoginView = ({ onLogin }) => {
 
             <button
               type="submit"
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-4.5 rounded-2xl flex items-center justify-center gap-3 shadow-xl shadow-blue-600/20 transition-all active:scale-95 group focus:ring-4 focus:ring-blue-600/20 outline-none uppercase tracking-widest text-sm"
+              disabled={isLoading}
+              className={cn(
+                "w-full font-black py-4.5 rounded-2xl flex items-center justify-center gap-3 transition-all active:scale-95 group focus:ring-4 outline-none uppercase tracking-widest text-sm",
+                isLoading 
+                  ? "bg-blue-400 cursor-not-allowed text-white/50" 
+                  : "bg-blue-600 hover:bg-blue-700 text-white shadow-xl shadow-blue-600/20 focus:ring-blue-600/20"
+              )}
             >
-              Access Command Center
-              <LogOut size={18} className="group-hover:translate-x-1 transition-transform rotate-180" />
+              {isLoading ? (
+                <>
+                  <RotateCw size={18} className="animate-spin" />
+                  Authenticating...
+                </>
+              ) : (
+                <>
+                  Access Command Center
+                  <LogOut size={18} className="group-hover:translate-x-1 transition-transform rotate-180" />
+                </>
+              )}
             </button>
           </form>
 

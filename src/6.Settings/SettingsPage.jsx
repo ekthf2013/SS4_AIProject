@@ -56,18 +56,6 @@ export const SettingsPage = ({ user, theme, toggleTheme }) => {
                 />
               </div>
             </div>
-            <div className={cn(
-              "flex items-center justify-between p-4 rounded-2xl border transition-all duration-500",
-              isDark ? "bg-slate-800 border-slate-700" : "bg-blue-50 border-blue-100"
-            )}>
-              <span className={cn(
-                "text-xs font-bold uppercase",
-                isDark ? "text-blue-400" : "text-blue-800"
-              )}>{t('realtime_tele')}</span>
-              <div className="w-12 h-6 bg-blue-600 rounded-full relative flex items-center px-1">
-                <div className="w-4 h-4 bg-white rounded-full ml-auto shadow-sm" />
-              </div>
-            </div>
           </div>
         </Card>
       </div>
