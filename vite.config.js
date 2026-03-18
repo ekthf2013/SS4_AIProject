@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
-import { exec } from 'child_process';
+import { exec, spawnSync } from 'child_process';
 import util from 'util';
 
 const execPromise = util.promisify(exec);
@@ -81,15 +81,23 @@ function pathFindingPlugin() {
 
         // Helper to run NLM Query
         const runNlmQuery = async (notebookId, question, sourceIds = null) => {
-          let command = `nlm notebook query "${notebookId}" "${question.replace(/"/g, '\\"')}" --profile default --json`;
-          if (sourceIds) command += ` --source-ids "${sourceIds}"`;
+          const args = ['notebook', 'query', notebookId, question, '--profile', 'default', '--json'];
+          if (sourceIds) args.push('--source-ids', sourceIds);
           
-          const { stdout } = await execPromise(command);
-          const parsed = JSON.parse(stdout);
-          if (parsed && parsed.value && parsed.value.answer) {
-            return parsed.value.answer;
+          const result = spawnSync('nlm', args, { encoding: 'utf8', windowsHide: true });
+          
+          if (result.status === 0) {
+            try {
+              const parsed = JSON.parse(result.stdout);
+              if (parsed && parsed.value && parsed.value.answer) {
+                return parsed.value.answer;
+              }
+              throw new Error('Invalid NLM response format');
+            } catch (e) {
+              throw new Error(`Failed to parse NLM output: ${e.message}`);
+            }
           }
-          throw new Error('Invalid NLM response');
+          throw new Error(`nlm query failed with code ${result.status}. Stderr: ${result.stderr}`);
         };
 
         // Chat Guide API
@@ -188,17 +196,45 @@ function pathFindingPlugin() {
           req.on('end', async () => {
             res.setHeader('Content-Type', 'application/json');
             try {
-              const { departure, destination } = JSON.parse(body);
+              const { departure, destination, departureTime, commuteMode } = JSON.parse(body);
               const notebookId = "de6dee15-ad68-486b-b9f3-80d6ab7d5def";
-              const prompt = `사용자가 ${departure}에서 ${destination}으로 이동하려고 합니다. 사내 통근버스(1,500원) 및 무료 셔틀버스 노선도를 확인하여 가장 효율적인 경로 2가지를 제안해 주세요. 답변은 반드시 아래와 같은 JSON 배열 형식으로만 해주세요: [{"title": "경로명", "cost": 1500, "duration": "45분", "tags": ["추천"], "steps": ["단계1", "단계2"]}]`;
+              const modeText = commuteMode === 'toWork' ? '출근' : '퇴근';
+              
+              const localRules = `
+                특이사항 (반드시 준수): 
+                1. 판교역 무료 셔틀 이용 시 하차 지점은 '회사 앞'입니다. (별도의 도보 이동 언급 금지)
+                2. 회사 도착 예정 시간은 '판교역 북문' 버스정류장 출발 시간에서 무조건 +20분을 더한 시간으로 계산하여 작성하세요.
+                3. 모든 시간 표시는 반드시 '24시간 형식'(예: 08:30, 22:15)으로만 표시하세요. '오전/오후', 'AM/PM' 같은 수식어는 절대 사용하지 마세요.
+              `;
+
+              const prompt = `${localRules} 사용자가 ${departure}에서 ${destination}으로 ${modeText} 중입니다 (출발 시간: ${departureTime}, 24시간 형식). 1. 사내 통근/셔틀 전용 경로 2. 일반 대중교통(지하철/버스) 경로를 각각 하나씩 제안해 주세요. 답변은 부연 설명 없이 오직 아래 JSON 배열 형식으로만 출력하세요: [{"title": "경로명", "cost": 1500, "duration": "45분", "tags": ["추천"], "steps": ["단계1", "단계2"]}]`;
 
               const answer = await runNlmQuery(notebookId, prompt);
+              
+              const citationRegex = /\[[\d\s,\-|\.]+\]/g;
+              const cleanText = (text) => typeof text === 'string' ? text.replace(citationRegex, '').replace(/\s*\.\s*$/, '.').trim() : text;
+
               const jsonMatch = answer.match(/\[\s*\{[\s\S]*\}\s*\]/);
               if (jsonMatch) {
-                const routes = JSON.parse(jsonMatch[0].replace(/\[\d+\]/g, ''));
+                const cleanedJsonString = jsonMatch[0].replace(citationRegex, '');
+                let routes = JSON.parse(cleanedJsonString);
+                
+                // Deep clean steps
+                routes = routes.map(r => ({
+                  ...r,
+                  title: cleanText(r.title),
+                  steps: Array.isArray(r.steps) ? r.steps.map(s => cleanText(s)) : r.steps
+                }));
+                
                 return res.end(JSON.stringify({ success: true, answer: routes }));
               }
-              return res.end(JSON.stringify({ success: true, answer: [{ title: "경로 분석 결과", cost: 0, duration: "확인 필요", tags: ["AI"], steps: [answer.replace(/\[\d+\]/g, '').trim()] }] }));
+
+              return res.end(JSON.stringify({ 
+                success: true, 
+                answer: [
+                  { title: "AI 경로 안내", cost: 1500, duration: "확인 필요", tags: ["AI"], steps: [cleanText(answer)] }
+                ] 
+              }));
             } catch (error) {
               return res.end(JSON.stringify({ success: false, error: error.message }));
             }

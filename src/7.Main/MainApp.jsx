@@ -55,6 +55,7 @@ const MainAppContent = () => {
     { role: 'ai', text: t('ai_greet') }
   ]);
   const [inputMessage, setInputMessage] = useState('');
+  const [isChatLoading, setIsChatLoading] = useState(false);
 
   // Update AI greeting when language changes
   useEffect(() => {
@@ -72,13 +73,40 @@ const MainAppContent = () => {
     setTheme(prev => prev === 'light' ? 'dark' : 'light');
   };
 
-  const sendMessage = () => {
-    if (!inputMessage.trim()) return;
-    setChatMessages(prev => [...prev, { role: 'user', text: inputMessage.toUpperCase() }]);
+  const sendMessage = async () => {
+    if (!inputMessage.trim() || isChatLoading) return;
+    
+    const userMsg = inputMessage.trim();
+    setChatMessages(prev => [...prev, { role: 'user', text: userMsg }]);
     setInputMessage('');
-    setTimeout(() => {
-      setChatMessages(prev => [...prev, { role: 'ai', text: t('ai_proc') }]);
-    }, 1000);
+    setIsChatLoading(true);
+
+    try {
+      // Provide context about the current page
+      const pageLabel = getActiveLabel();
+      const res = await fetch('/api/chat-guide', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: `[현재 페이지: ${pageLabel}] ${userMsg}`,
+          notebookUrl: "https://notebooklm.google.com/notebook/2d4b0ec8-fdc4-4655-af25-b33a94d92d2b?authuser=1"
+        })
+      });
+      const data = await res.json();
+      
+      if (data.success) {
+        let answerText = data.answer || '';
+        // Basic cleanup of NLM artifacts
+        answerText = answerText.replace(/EXTREMELY IMPORTANT:[\s\S]*/g, '').trim();
+        setChatMessages(prev => [...prev, { role: 'ai', text: answerText }]);
+      } else {
+        setChatMessages(prev => [...prev, { role: 'ai', text: `죄송합니다. 답변을 생성하는 중 오류가 발생했습니다: ${data.error || 'Unknown Error'}` }]);
+      }
+    } catch (err) {
+      setChatMessages(prev => [...prev, { role: 'ai', text: `통신 중 오류가 발생했습니다: ${err.message}` }]);
+    } finally {
+      setIsChatLoading(false);
+    }
   };
 
   const markAsRead = (id) => {
@@ -436,6 +464,15 @@ const MainAppContent = () => {
                       </div>
                     </div>
                   ))}
+                  {isChatLoading && (
+                    <div className="flex flex-col items-start">
+                      <div className="bg-white text-gray-800 border border-gray-100 rounded-2xl rounded-tl-sm p-4 flex gap-1.5 shadow-sm">
+                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-bounce" />
+                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-bounce [animation-delay:-0.15s]" />
+                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-bounce [animation-delay:-0.3s]" />
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="p-4 bg-white border-t border-gray-100">

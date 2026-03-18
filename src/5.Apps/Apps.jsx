@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Utensils, MapPin, FileText, ChevronRight, X, Trash2, Train, Bus, Footprints, Link2, RotateCw, Plus } from 'lucide-react';
+import { Utensils, MapPin, FileText, ChevronRight, X, Trash2, Train, Bus, Footprints, Link2, RotateCw, Plus, Clock } from 'lucide-react';
 import { useTranslation } from '../shared/Translations';
 import { PremiumPage, SectionHeader, Card } from '../shared/SharedComponents';
 import { cn } from '../shared/utils';
@@ -16,6 +16,7 @@ export const Apps = ({ user, addNotification, theme }) => {
   const [isPollActive, setIsPollActive] = useState(false);
   const [departure, setDeparture] = useState('');
   const [destination, setDestination] = useState('회사');
+  const [departureTime, setDepartureTime] = useState('08:30');
   const [commuteMode, setCommuteMode] = useState('toWork'); // 'toWork' or 'toHome'
   const [path, setPath] = useState(null);
 
@@ -115,7 +116,7 @@ export const Apps = ({ user, addNotification, theme }) => {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ departure, destination })
+        body: JSON.stringify({ departure, destination, departureTime, commuteMode })
       });
       const data = await res.json();
       if (data.success) {
@@ -196,14 +197,19 @@ export const Apps = ({ user, addNotification, theme }) => {
               맛집 DB 설정 {isConfigExpanded ? "닫기" : "열기"}
             </button>
           )}
-          <div className="flex bg-white rounded-2xl p-1.5 gap-1 border border-gray-200 shadow-sm">
+          <div className={cn(
+            "flex rounded-2xl p-1.5 gap-1 border shadow-sm transition-colors duration-500",
+            theme === 'dark' ? "bg-slate-800 border-slate-700" : "bg-white border-gray-200"
+          )}>
             {['welfare', 'voting'].map(tab => (
               <button
                 key={tab}
                 onClick={() => setAppTab(tab)}
                 className={cn(
                   "px-6 py-2 rounded-xl text-sm font-bold transition-all",
-                  appTab === tab ? "bg-blue-600 text-white shadow-md shadow-blue-600/20" : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"
+                  appTab === tab 
+                    ? "bg-blue-600 text-white shadow-md shadow-blue-600/20" 
+                    : (theme === 'dark' ? "text-slate-400 hover:bg-slate-700 hover:text-slate-200" : "text-gray-500 hover:bg-gray-50 hover:text-gray-700")
                 )}
               >
                 {t(`tab_${tab}`)}
@@ -221,10 +227,16 @@ export const Apps = ({ user, addNotification, theme }) => {
             exit={{ height: 0, opacity: 0, marginBottom: 0 }}
             className="overflow-hidden"
           >
-            <div className="bg-orange-600/5 border border-orange-100 p-4 rounded-2xl flex flex-col md:flex-row items-center gap-4">
+            <div className={cn(
+              "p-4 rounded-2xl flex flex-col md:flex-row items-center gap-4 transition-colors duration-500 border",
+              theme === 'dark' ? "bg-slate-900/50 border-slate-700" : "bg-orange-600/5 border-orange-100"
+            )}>
               <div className="flex items-center gap-2 shrink-0">
                 <Link2 size={16} className="text-orange-600" />
-                <span className="text-xs font-black text-gray-700">식당 구글 시트 URL</span>
+                <span className={cn(
+                  "text-xs font-black",
+                  theme === 'dark' ? "text-slate-300" : "text-gray-700"
+                )}>식당 구글 시트 URL</span>
               </div>
               <input 
                 type="password"
@@ -234,7 +246,10 @@ export const Apps = ({ user, addNotification, theme }) => {
                   localStorage.setItem('restaurant_sheets_url', e.target.value);
                 }}
                 placeholder="맛집 시트 웹 앱 URL을 입력하세요..."
-                className="flex-1 p-2 bg-white border border-gray-200 rounded-lg text-[10px] font-medium outline-none focus:border-orange-500 shadow-inner"
+                className={cn(
+                  "flex-1 p-2 rounded-lg text-[10px] font-medium outline-none transition-colors shadow-inner border",
+                  theme === 'dark' ? "bg-slate-900 border-slate-700 text-white focus:border-orange-500" : "bg-white border-gray-200 text-gray-900 focus:border-orange-500"
+                )}
               />
               <button 
                 onClick={fetchRestaurants}
@@ -324,7 +339,18 @@ export const Apps = ({ user, addNotification, theme }) => {
                     )} 
                   />
                 </div>
-                <button onClick={handleAddRestaurant} disabled={!newShopName || isShopsLoading} className="w-full py-3.5 bg-blue-600 disabled:bg-gray-200 disabled:text-gray-400 hover:bg-blue-700 rounded-xl font-bold tracking-widest text-white transition-colors shadow-sm">+ 추가하기</button>
+                <button 
+                  onClick={handleAddRestaurant} 
+                  disabled={!newShopName || isShopsLoading} 
+                  className={cn(
+                    "w-full py-3.5 rounded-xl font-bold tracking-widest text-white transition-colors shadow-sm",
+                    theme === 'dark' 
+                      ? "bg-blue-600 hover:bg-blue-500 disabled:bg-slate-800 disabled:text-slate-600" 
+                      : "bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400"
+                  )}
+                >
+                  + 추가하기
+                </button>
               </div>
             </Card>
 
@@ -399,12 +425,52 @@ export const Apps = ({ user, addNotification, theme }) => {
                     )}
                   />
                 </div>
+                <div className="space-y-1.5">
+                  <p className="text-xs font-bold text-gray-500 uppercase tracking-widest pl-1">출발 시간 (24H)</p>
+                  <div className="flex gap-3">
+                    <div className="flex-1 relative group">
+                      <select 
+                        value={departureTime.split(':')[0]}
+                        onChange={(e) => setDepartureTime(`${e.target.value}:${departureTime.split(':')[1]}`)}
+                        className={cn(
+                          "w-full appearance-none border rounded-xl p-4 pl-12 text-sm font-bold outline-none transition-all transition-colors duration-500",
+                          theme === 'dark' ? "bg-slate-900 border-slate-700 text-slate-100 focus:border-blue-500" : "bg-gray-50 border-gray-200 text-gray-900 focus:border-blue-500 focus:bg-white"
+                        )}
+                      >
+                        {Array.from({ length: 24 }).map((_, i) => (
+                          <option key={i} value={String(i).padStart(2, '0')}>{String(i).padStart(2, '0')}시</option>
+                        ))}
+                      </select>
+                      <Clock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                    </div>
+                    <div className="flex-1 relative group">
+                      <select 
+                        value={departureTime.split(':')[1]}
+                        onChange={(e) => setDepartureTime(`${departureTime.split(':')[0]}:${e.target.value}`)}
+                        className={cn(
+                          "w-full appearance-none border rounded-xl p-4 pl-12 text-sm font-bold outline-none transition-all transition-colors duration-500",
+                          theme === 'dark' ? "bg-slate-900 border-slate-700 text-slate-100 focus:border-blue-500" : "bg-gray-50 border-gray-200 text-gray-900 focus:border-blue-500 focus:bg-white"
+                        )}
+                      >
+                        {['00', '10', '20', '30', '40', '50'].map(m => (
+                          <option key={m} value={m}>{m}분</option>
+                        ))}
+                      </select>
+                      <Clock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <button
                 onClick={handleCalculatePath}
                 disabled={!departure || !destination}
-                className="w-full py-4 bg-blue-600 disabled:bg-gray-200 disabled:text-gray-400 text-white rounded-xl font-bold tracking-widest hover:bg-blue-700 transition-all shadow-sm"
+                className={cn(
+                  "w-full py-4 text-white rounded-xl font-bold tracking-widest transition-all shadow-sm",
+                  theme === 'dark' 
+                    ? "bg-blue-600 hover:bg-blue-500 disabled:bg-slate-800 disabled:text-slate-600" 
+                    : "bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400"
+                )}
               >
                 {t('calc_path')}
               </button>
@@ -470,14 +536,23 @@ export const Apps = ({ user, addNotification, theme }) => {
                         );
                       }
                       return (
-                        <div key={i} className="flex items-start gap-4 bg-blue-50/50 p-4 rounded-xl border border-blue-100 mb-2 last:mb-0">
+                        <div key={i} className={cn(
+                          "flex items-start gap-4 p-4 rounded-xl border mb-2 last:mb-0 transition-colors",
+                          theme === 'dark' ? "bg-blue-900/10 border-blue-900/30" : "bg-blue-50/50 border-blue-100"
+                        )}>
                           <div className="w-1.5 h-1.5 rounded-full bg-blue-600 mt-1.5 shrink-0" />
-                          <p className="text-sm font-bold text-gray-800 leading-relaxed">{route}</p>
+                          <p className={cn(
+                            "text-sm font-bold leading-relaxed",
+                            theme === 'dark' ? "text-slate-300" : "text-gray-800"
+                          )}>{route}</p>
                         </div>
                       );
                     })
                   ) : (
-                    <div className="bg-rose-50 rounded-2xl p-5 border border-rose-100 italic text-sm text-rose-800">
+                    <div className={cn(
+                      "rounded-2xl p-5 border italic text-sm transition-colors",
+                      theme === 'dark' ? "bg-rose-900/10 border-rose-900/30 text-rose-400" : "bg-rose-50 border-rose-100 text-rose-800"
+                    )}>
                       결과를 가져올 수 없습니다. 다시 시도해 주세요.
                     </div>
                   )}

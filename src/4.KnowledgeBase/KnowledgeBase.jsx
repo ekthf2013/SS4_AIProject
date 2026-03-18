@@ -131,8 +131,8 @@ export const KnowledgeBase = ({ theme }) => {
               onClick={() => setKbTab(tab)}
               className={cn(
                 "px-6 py-2 rounded-xl text-sm font-bold transition-all",
-                kbTab === tab 
-                  ? "bg-blue-600 text-white shadow-md shadow-blue-600/20" 
+                kbTab === tab
+                  ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
                   : (theme === 'dark' ? "text-slate-400 hover:bg-slate-700 hover:text-slate-200" : "text-gray-500 hover:bg-gray-50 hover:text-gray-700")
               )}
             >
@@ -165,8 +165,8 @@ export const KnowledgeBase = ({ theme }) => {
                       onClick={() => setSelectedDoc(prev => prev?.id === doc.id ? null : doc)}
                       className={cn(
                         "w-full text-left p-5 rounded-2xl border transition-all flex items-start gap-4 shadow-sm",
-                        selectedDoc?.id === doc.id 
-                          ? (theme === 'dark' ? "bg-blue-600/20 border-blue-500" : "bg-white border-blue-500 ring-1 ring-blue-500/20") 
+                        selectedDoc?.id === doc.id
+                          ? (theme === 'dark' ? "bg-blue-600/20 border-blue-500" : "bg-white border-blue-500 ring-1 ring-blue-500/20")
                           : (theme === 'dark' ? "bg-slate-800/50 border-slate-700 hover:border-slate-500" : "bg-white border-gray-100 hover:border-gray-300")
                       )}
                     >
@@ -207,8 +207,8 @@ export const KnowledgeBase = ({ theme }) => {
                 </div>
 
                 <div className={cn(
-                   "flex-1 w-full p-6 overflow-y-auto",
-                   theme === 'dark' ? "bg-slate-900" : "bg-white"
+                  "flex-1 w-full p-6 overflow-y-auto",
+                  theme === 'dark' ? "bg-slate-900" : "bg-white"
                 )}>
                   <h2 className={cn(
                     "text-xl font-bold mb-6 border-b pb-4",
@@ -233,19 +233,19 @@ export const KnowledgeBase = ({ theme }) => {
                         NotebookLM이 문서를 분석하고 요약 중입니다...
                       </div>
                     ) : (
-                    <div className={cn(
-                    "text-sm font-medium leading-relaxed whitespace-pre-line",
-                    theme === 'dark' ? "text-slate-300" : "text-gray-700"
-                  )}>
-                    {docSummary || '요약 내용이 없습니다.'}
+                      <div className={cn(
+                        "text-sm font-medium leading-relaxed whitespace-pre-line",
+                        theme === 'dark' ? "text-slate-300" : "text-gray-700"
+                      )}>
+                        {docSummary || '요약 내용이 없습니다.'}
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
 
-                <div className={cn(
-                  "font-medium text-xs leading-relaxed space-y-4 pt-4 border-t",
-                  theme === 'dark' ? "text-slate-400 border-slate-700" : "text-gray-500 border-gray-100"
-                )}>
+                  <div className={cn(
+                    "font-medium text-xs leading-relaxed space-y-4 pt-4 border-t",
+                    theme === 'dark' ? "text-slate-400 border-slate-700" : "text-gray-500 border-gray-100"
+                  )}>
                     <p className="text-blue-600 mt-4">자세한 원본 내용을 확인하거나 추가로 질문하시려면 상단의 'NotebookLM 열기' 버튼을 클릭하세요.</p>
                     {selectedDoc.url && (
                       <a href={selectedDoc.url} target="_blank" rel="noreferrer" className="block mt-4 text-blue-500 hover:underline">원본 링크 확인: {selectedDoc.url}</a>
@@ -313,7 +313,7 @@ export const KnowledgeBase = ({ theme }) => {
                   <div className="w-3 h-3 rounded-full bg-blue-600 animate-bounce [animation-delay:-0.3s]" />
                 </div>
                 <p className="text-blue-600 font-black uppercase tracking-widest animate-pulse mt-4">NOTEBOOK LM 인지 모델 가동 중...</p>
-                <p className="text-gray-500 text-xs font-bold tracking-wider mt-2">데이터 추출 및 시험 문제 변환에 최대 15초가 소요됩니다.</p>
+                <p className="text-gray-500 text-xs font-bold tracking-wider mt-2">데이터 추출 및 시험 문제 변환에 최대 1분이 소요됩니다.</p>
               </div>
             )}
 
